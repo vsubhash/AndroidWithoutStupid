@@ -324,6 +324,7 @@ public class MvSQLiteDB {
 	public void closeDB() {
 		if (mbIsAvailable) {
 			if (isOpen()) {
+				MvMessages.logMessage("DB closed");
 				moDB.close();
 			}
 		}

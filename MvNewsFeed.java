@@ -40,6 +40,30 @@ import android.text.Html;
  */
 public class MvNewsFeed {
 	
+  /**
+   * Returns the value of a node. (This method fixes a bug in Android
+   * version older 4.0)
+   * 
+   * @param aoNode DOM node whose value needs to be returned
+   * @return value of the DOM node
+   */
+  public String get_NodeValueFix(Node aoNode) {
+  	int i, n; 
+  	String sNodeValue = "";
+  	
+  	if (aoNode.getChildNodes().getLength() == 1) {
+  		sNodeValue = aoNode.getFirstChild().getNodeValue();
+  	} else if (aoNode.getChildNodes().getLength() > 1) { 
+  		n = aoNode.getChildNodes().getLength();
+  		for (i = 0; i < n; i++) {
+  			if (aoNode.getChildNodes().item(i).getNodeValue() != null) {
+  				sNodeValue = sNodeValue + aoNode.getChildNodes().item(i).getNodeValue();
+  			}
+  		}
+  	} 
+  	return(sNodeValue);
+  }	
+	
 	final String FEED_TYPE_RSS = "RSS";
 	final String FEED_TYPE_ATOM = "ATOM";
 	final String FEED_TYPE_RDF = "RDF";	
@@ -107,7 +131,7 @@ public class MvNewsFeed {
 			oDocBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			doc = oDocBuilder.parse(oInputStream);
 			
-			oDomNodes = doc.getElementsByTagName("rss");
+			oDomNodes = doc.getElementsByTagName("channel");
 			n = oDomNodes.getLength();			
 			if (n > 0) {
 				this.msFeedType = this.FEED_TYPE_RSS;
@@ -116,6 +140,7 @@ public class MvNewsFeed {
 					this.msFeedLocation = asUrl;
 				}
 			} else {
+				MvMessages.logMessage("no channel nodes");
 				oDomNodes = doc.getElementsByTagName("rdf:RDF");
 				n = oDomNodes.getLength();
 				if (n > 0) {
@@ -420,133 +445,119 @@ public class MvNewsFeed {
   	}    	
   }
   
-  void processRSS(NodeList aoRssNodes) {
+  void processRSS(NodeList aoChannelNodes) {
   	int i, j, k, l, n, o, p, q;
-  	Node oRssNode, oChannelNode, oChannelChild, oArticleChild;
-  	NodeList oChannelNodes, oChannelChildren, oArticleChildren;
+  	Node oChannelNode, oChannelChild, oArticleChild;
+  	NodeList oChannelChildren, oArticleChildren;
   	Element /*oChannelChildElement,*/ oArticleElement;
   	MvNewsFeedMessage oNewArticle;
 		String sArticleTitle="", sArticleLink="", sArticleDate="", 
 			   sArticleContent="", sArticleEnclosure="", sArticleGuid="", sArticleImage = "";
   	Date dtArticlePublished = null;
 		
-  	n = aoRssNodes.getLength();
-  	for (i = 0; i < n; i++) {
-  		oRssNode = aoRssNodes.item(i);
-  		if (oRssNode.getNodeType() == Node.ELEMENT_NODE) {
-  			if (oRssNode.getNodeName().toLowerCase().contentEquals("rss")) {
-  				oChannelNodes = oRssNode.getChildNodes();
-  				o = oChannelNodes.getLength();
-  				for (j = 0; j < o; j++) {
-  					oChannelNode = oChannelNodes.item(j);
-  					if (oChannelNode.getNodeType() == Node.ELEMENT_NODE) {
-  						if (oChannelNode.getNodeName().toLowerCase().contentEquals("channel")) {
-  							oChannelChildren = oChannelNode.getChildNodes();
-  							p = oChannelChildren.getLength();
-  			 				for (k = 0; k < p; k++) {
-  			 					oChannelChild = oChannelChildren.item(k);
-  			 					if (oChannelChild.getNodeType() == Node.ELEMENT_NODE) {
-  			 						//oChannelChildElement = (Element) oChannelChild;
-  									if (oChannelChild.getNodeName().toLowerCase().contentEquals("title")) {
-  										this.msFeedTitle = get_NodeValueFix(oChannelChild);
-  										this.msFeedTitle = this.msFeedTitle.replace('"', ' ').trim();  		
-  										this.msFeedTitle = this.msFeedTitle.replace(Pattern.quote("  "), " ");
-  										this.msFeedTitle = this.msFeedTitle.replace(Pattern.quote("  "), " ");
-  										this.msFeedTitle = Html.fromHtml(this.msFeedTitle).toString();
-  										this.msFeedTitle = Html.fromHtml(this.msFeedTitle).toString();
-  									} else if (oChannelChild.getNodeName().toLowerCase().contentEquals("description")) {
-  										this.msFeedDescription = get_NodeValueFix(oChannelChild);
-  									} else if (oChannelChild.getNodeName().toLowerCase().contentEquals("link")) {
-  										this.msFeedLocation = get_NodeValueFix(oChannelChild);
-  									} else if (oChannelChild.getNodeName().toLowerCase().contentEquals("item")) {
-  										oArticleChildren = oChannelChild.getChildNodes();
-  										q = oArticleChildren.getLength();
-											sArticleTitle=""; 
-											sArticleLink=""; 
-											sArticleDate=""; 
-											sArticleContent=""; 
-											sArticleEnclosure=""; 
-											sArticleGuid="";  	
-											dtArticlePublished = null;
-  										for (l = 0; l < q; l++) {
-  											oArticleChild = oArticleChildren.item(l);
-  											if (oArticleChild.getNodeType() == Node.ELEMENT_NODE) {
-  												oArticleElement = (Element) oArticleChild;
-  												if (oArticleChild.getNodeName().toLowerCase().contentEquals("title")) {
-  												  sArticleTitle = get_NodeValueFix(oArticleChild);	
-  												  sArticleTitle = sArticleTitle.replaceAll(Pattern.quote("  "), " ");
-  												  sArticleTitle = sArticleTitle.replaceAll(Pattern.quote("  "), " ");
-  												  sArticleTitle = Html.fromHtml(sArticleTitle).toString(); // bad formatting
-  												  sArticleTitle = Html.fromHtml(sArticleTitle).toString(); // bad formatting
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("description")) {
-  												  sArticleContent = get_NodeValueFix(oArticleChild);
-  												  sArticleContent = // crooked google news
-  												  		sArticleContent.replaceAll(Pattern.quote(" src=\"//"), " src=\"http://");
-  												  sArticleContent = // crooked google news
-  												  		sArticleContent.replaceAll(Pattern.quote(" src=&quot;//"), "src=\"http://");
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("content:encoded")) {
-  												  sArticleContent = get_NodeValueFix(oArticleChild);  									  
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("link")) {
-  												  sArticleLink = get_NodeValueFix(oArticleChild);	
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("guid")) {
-  												  sArticleGuid = get_NodeValueFix(oArticleChild);	
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("pubdate")) {
-  												  sArticleDate = get_NodeValueFix(oArticleChild);
-  												  dtArticlePublished = MvGeneral.getDateFromString(sArticleDate);
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("dc:date")) {
-  												  sArticleDate = get_NodeValueFix(oArticleChild);
-  												  dtArticlePublished = MvGeneral.getDateFromString(sArticleDate);
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("media:thumbnail")) {
-  													if (oArticleElement.hasAttribute("url")) {
-  													  if (oArticleElement.getAttribute("url").length() > "http://www.w.w".length()) {
-  													  	sArticleImage = oArticleElement.getAttribute("url");
-  													  }	
-  													}
-  												} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("enclosure")) {
-  													if (oArticleElement.hasAttribute("url")) {
-  												    sArticleEnclosure = oArticleElement.getAttribute("url");
-  													}
-  												}  
-  											}  								
-  										}
-  										
-  										if (sArticleDate.contentEquals("")) {
-  											dtArticlePublished = MvGeneral.getCurrentDateWithZeroedTime();
-  											sArticleDate = dtArticlePublished.toLocaleString();
-  										}
-  										
-  										oNewArticle = new MvNewsFeedMessage(sArticleTitle, sArticleLink, dtArticlePublished, sArticleContent, sArticleGuid);
-  										if (sArticleImage.length() > "http://www.a.i".length()) {
-  											oNewArticle.msMessageImageLink = sArticleImage;
-  										}
-  										if (sArticleEnclosure.length() > MIN_URL_LENGTH) {
-  											oNewArticle.msMessageEnclosure = sArticleEnclosure;
-  	    	  	  	  	  if (sArticleLink.length() < MIN_URL_LENGTH) {
-  	    	  	  	  	  	oNewArticle.msMessageLink = sArticleEnclosure;
-  	    	  	  	  	  }
-  										} else if (sArticleLink.endsWith(".ogg") || 
-	  	  					  	  	  		 sArticleLink.endsWith(".ogv") ||
-			  					  	  	  		 sArticleLink.endsWith(".mp3") ||
-			  					  	  	  		 sArticleLink.endsWith(".mp4") ||
-			  					  	  	  		 sArticleLink.endsWith(".mov") ||
-			  					  	  	  		 sArticleLink.endsWith(".wma") ||
-			  					  	  	  		sArticleLink.endsWith(".wmv")) {
-  		    	  	  	  	oNewArticle.msMessageEnclosure = sArticleLink;  					  	  	  	  	  	  	
-  	    	  	  	  	}
-  										this.moMessages.add(oNewArticle);
-  									} 
-  			 					}
-  			 				}
-  							break; // only one channel node needed
+		o = aoChannelNodes.getLength();
+		for (j = 0; j < o; j++) {
+			oChannelNode = aoChannelNodes.item(j);
+			if (oChannelNode.getNodeType() == Node.ELEMENT_NODE) {
+				oChannelChildren = oChannelNode.getChildNodes();
+				p = oChannelChildren.getLength();
+  			for (k = 0; k < p; k++) {
+  			 	oChannelChild = oChannelChildren.item(k);
+  			 	if (oChannelChild.getNodeType() == Node.ELEMENT_NODE) {
+  			 		if (oChannelChild.getNodeName().toLowerCase().contentEquals("title")) {
+  						this.msFeedTitle = get_NodeValueFix(oChannelChild);
+  						this.msFeedTitle = this.msFeedTitle.replace('"', ' ').trim();  		
+  						this.msFeedTitle = this.msFeedTitle.replace(Pattern.quote("  "), " ");
+  						this.msFeedTitle = this.msFeedTitle.replace(Pattern.quote("  "), " ");
+  						this.msFeedTitle = Html.fromHtml(this.msFeedTitle).toString();
+  						this.msFeedTitle = Html.fromHtml(this.msFeedTitle).toString();
+  					} else if (oChannelChild.getNodeName().toLowerCase().contentEquals("description")) {
+  						this.msFeedDescription = get_NodeValueFix(oChannelChild);
+  					} else if (oChannelChild.getNodeName().toLowerCase().contentEquals("link")) {
+  						this.msFeedLocation = get_NodeValueFix(oChannelChild);
+  					} else if (oChannelChild.getNodeName().toLowerCase().contentEquals("item")) {
+  						oArticleChildren = oChannelChild.getChildNodes();
+  						q = oArticleChildren.getLength();
+							sArticleTitle=""; 
+							sArticleLink=""; 
+							sArticleDate=""; 
+							sArticleContent=""; 
+							sArticleEnclosure=""; 
+							sArticleGuid="";  	
+							dtArticlePublished = null;
+							for (l = 0; l < q; l++) {
+								oArticleChild = oArticleChildren.item(l);
+								if (oArticleChild.getNodeType() == Node.ELEMENT_NODE) {
+									oArticleElement = (Element) oArticleChild;
+									if (oArticleChild.getNodeName().toLowerCase().contentEquals("title")) {
+									  sArticleTitle = get_NodeValueFix(oArticleChild);	
+									  sArticleTitle = sArticleTitle.replaceAll(Pattern.quote("  "), " ");
+									  sArticleTitle = sArticleTitle.replaceAll(Pattern.quote("  "), " ");
+									  sArticleTitle = Html.fromHtml(sArticleTitle).toString(); // bad formatting
+									  sArticleTitle = Html.fromHtml(sArticleTitle).toString(); // bad formatting
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("description")) {
+									  sArticleContent = get_NodeValueFix(oArticleChild);
+									  sArticleContent = // crooked google news
+									  		sArticleContent.replaceAll(Pattern.quote(" src=\"//"), " src=\"http://");
+									  sArticleContent = // crooked google news
+									  		sArticleContent.replaceAll(Pattern.quote(" src=&quot;//"), "src=\"http://");
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("content:encoded")) {
+									  sArticleContent = get_NodeValueFix(oArticleChild);  									  
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("link")) {
+									  sArticleLink = get_NodeValueFix(oArticleChild);	
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("guid")) {
+									  sArticleGuid = get_NodeValueFix(oArticleChild);	
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("pubdate")) {
+									  sArticleDate = get_NodeValueFix(oArticleChild);
+									  dtArticlePublished = MvGeneral.getDateFromString(sArticleDate);
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("dc:date")) {
+									  sArticleDate = get_NodeValueFix(oArticleChild);
+									  dtArticlePublished = MvGeneral.getDateFromString(sArticleDate);
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("media:thumbnail")) {
+										if (oArticleElement.hasAttribute("url")) {
+										  if (oArticleElement.getAttribute("url").length() > "http://www.w.w".length()) {
+										  	sArticleImage = oArticleElement.getAttribute("url");
+										  }	
+										}
+									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("enclosure")) {
+										if (oArticleElement.hasAttribute("url")) {
+									    sArticleEnclosure = oArticleElement.getAttribute("url");
+										}
+									}  
+								}  								
   						}
-  					}  					
-  				}
-  				break; // only one rss node needed
+  										
+							if (sArticleDate.contentEquals("")) {
+								dtArticlePublished = MvGeneral.getCurrentDateWithZeroedTime();
+								sArticleDate = dtArticlePublished.toLocaleString();
+							}
+  										
+							oNewArticle = new MvNewsFeedMessage(sArticleTitle, sArticleLink, dtArticlePublished, sArticleContent, sArticleGuid);
+							if (sArticleImage.length() > "http://www.a.i".length()) {
+								oNewArticle.msMessageImageLink = sArticleImage;
+							}
+							if (sArticleEnclosure.length() > MIN_URL_LENGTH) {
+								oNewArticle.msMessageEnclosure = sArticleEnclosure;
+	  	  	  	  if (sArticleLink.length() < MIN_URL_LENGTH) {
+	  	  	  	  	oNewArticle.msMessageLink = sArticleEnclosure;
+	  	  	  	  }
+							} else if (sArticleLink.endsWith(".ogg") || 
+					  	  	  		 sArticleLink.endsWith(".ogv") ||
+					  	  	  		 sArticleLink.endsWith(".mp3") ||
+					  	  	  		 sArticleLink.endsWith(".mp4") ||
+					  	  	  		 sArticleLink.endsWith(".mov") ||
+					  	  	  		 sArticleLink.endsWith(".wma") ||
+					  	  	  		sArticleLink.endsWith(".wmv")) {
+  	  	  	  	oNewArticle.msMessageEnclosure = sArticleLink;  					  	  	  	  	  	  	
+	  	  	  	}
+							this.moMessages.add(oNewArticle);
+  					} 
+  			 	}
   			}
-  		}  		
+  			break; // only one channel node needed
+  		}
   	}
-  }
-
+	}
 	
 	
 	/**
@@ -699,28 +710,6 @@ public class MvNewsFeed {
   }
   
 
-  /**
-   * Returns the value of a node. (This method fixes a bug in Android
-   * version older 4.0)
-   * 
-   * @param aoNode DOM node whose value needs to be returned
-   * @return value of the DOM node
-   */
-  public String get_NodeValueFix(Node aoNode) {
-  	int i, n; 
-  	String sNodeValue = "";
-  	
-  	if (aoNode.getChildNodes().getLength() == 1) {
-  		sNodeValue = aoNode.getFirstChild().getNodeValue();
-  	} else if (aoNode.getChildNodes().getLength() > 1) { 
-  		n = aoNode.getChildNodes().getLength();
-  		for (i = 0; i < n; i++) {
-  			if (aoNode.getChildNodes().item(i).getNodeValue() != null) {
-  				sNodeValue = sNodeValue + aoNode.getChildNodes().item(i).getNodeValue();
-  			}
-  		}
-  	} 
-  	return(sNodeValue);
-  }
+
 	
 }

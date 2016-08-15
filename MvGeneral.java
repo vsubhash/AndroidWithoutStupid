@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import android.app.Activity;
 import android.app.IntentService;
@@ -36,6 +37,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.preference.PreferenceManager;
 import android.text.ClipboardManager;
+import android.view.View;
 import android.webkit.URLUtil;
 
 /**
@@ -711,4 +713,24 @@ public class MvGeneral {
   	
  }
 
+  
+	private static final AtomicInteger iAtomicInteger = new AtomicInteger(1);
+
+	/**
+	 * Generate a unique ID for use with {@link View#setId(int)}.
+	 *
+	 * @return a unique view ID
+	 */
+	public static int generateViewId() {
+	    for (;;) {
+	        final int iResult = iAtomicInteger.get();
+	        // aapt-generated IDs have the high byte nonzero; clamp to the range under that.
+	        int iNewValue = iResult + 1;
+	        if (iNewValue > 0x00FFFFFF) iNewValue = 1; // Roll over to 1, not 0.
+	        if (iAtomicInteger.compareAndSet(iResult, iNewValue)) {
+	            return iResult;
+	        }
+	    }
+	}
+  
 }

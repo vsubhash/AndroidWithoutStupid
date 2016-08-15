@@ -47,18 +47,22 @@ MvAsyncDownload dl =
  * @version 2015.02.13
  * 
  */
-public class MvAsyncDownload extends AsyncTask<String, Integer, MvException> {
-	public String mRemoteFileURL, mLocalFilePath, mLocalPath, msUserAgent;
-	HttpURLConnection mURLConnection;
-	public String msMimeType;
-	public int miFileSize;
-	int miBytesRead = 0;	
-	public String msFilePathWithHeaderName = "", msFileNameHeader = "";	
-	public boolean mbDoesHeadersHaveFileName = false, mbIsHTML = false;
-	
+public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
+	String msFilename, msFilePathname, msFileDirectory, msMimeType;
+	String msRemoteUrl, msHeaderFileName, msUserAgent;
+	HttpURLConnection moURLConnection;
+	long mlDownloadSize;
+	long mlBytesDownloaded = 0;
+	boolean mbIsChunked = true;
 	
 	BufferedInputStream in = null;
 	FileOutputStream of = null;
+	
+	public long getDownloadedSize() { return(mlBytesDownloaded); }
+	public long getDownloadSize() { return(mlDownloadSize); }
+	public boolean isDownloadSizeUnknown() { return(mbIsChunked); }
+	public String getDownloadFilePathname() { return(msFilePathname); }
+	public String getMimeType() { return(msMimeType); }
 	
 	private MvAsyncDownload() {
 		super();
@@ -82,10 +86,10 @@ public class MvAsyncDownload extends AsyncTask<String, Integer, MvException> {
 	 */
 	public MvAsyncDownload(String asURL, String asFile, String asUserAgent) {
 	  this();
-		mRemoteFileURL = asURL;
-		mLocalFilePath = asFile;
+		msRemoteUrl = asURL;
+		msFilePathname = asFile;
 		msUserAgent = asUserAgent;
-		this.execute(mRemoteFileURL, mLocalFilePath);
+		this.execute(msRemoteUrl, msFilePathname);
 	}
 	
 	public MvAsyncDownload(String asURL, String asPath, boolean abGuessFileName, String asMimeType) {
@@ -112,21 +116,18 @@ public class MvAsyncDownload extends AsyncTask<String, Integer, MvException> {
 	 */
 	public MvAsyncDownload(String asURL, String asPath, boolean abGuessFileName, String asMimeType, String asUserAgent) {
 	  this();
-	  String sDownloadedFile, sDownloadPath;
-	  mLocalPath = asPath;
-	  mRemoteFileURL = asURL;
+  	msFileDirectory = asPath;	  
+	  msRemoteUrl = asURL;
 	  msUserAgent = asUserAgent;
 	  
-	  
 	  if (abGuessFileName) {
-	  	sDownloadedFile = URLUtil.guessFileName(asURL, null, asMimeType);
-		  sDownloadPath = asPath + "/" + sDownloadedFile;	  	
+		  msFilePathname = asPath + File.separator + URLUtil.guessFileName(asURL, null, asMimeType);
 	  } else {
-	  	sDownloadPath = asPath;	  	
+	  	msFilePathname = asPath;
 	  }
 		
-		mLocalFilePath = sDownloadPath;
-		this.execute(mRemoteFileURL, mLocalFilePath);	  
+		MvMessages.logMessage("Set to download " + msRemoteUrl + " to " + msFilePathname);
+		this.execute(msRemoteUrl, msFilePathname);	  
 	}	
 	  
 	@Override
@@ -151,110 +152,127 @@ public class MvAsyncDownload extends AsyncTask<String, Integer, MvException> {
 		byte[] buf = new byte[1024];
 		int n = 0, iTries = 0;
 		
-		
-		if (asLinks.length == 2) {
+		if (asLinks.length == 2) { // url, file
 			try {
 				oURL = new URL(asLinks[0]);
-				mURLConnection = (HttpURLConnection) oURL.openConnection();
-				
+				moURLConnection = (HttpURLConnection) oURL.openConnection();
+				//HttpURLConnection.setFollowRedirects(true);
 				if (msUserAgent.length() > "Mozilla".length()) {
-					mURLConnection.setRequestProperty("User-Agent", msUserAgent);
-					//MvMessages.logMessage("Mimicking " + msUserAgent);
-					MvMessages.logMessage("Mimicking ");
+				  moURLConnection.setRequestProperty("User-Agent", msUserAgent);
+					MvMessages.logMessage("Mimicking " + msUserAgent);
+					MvMessages.logMessage("Mimicking useragent");
+				}		
+				
+				mlDownloadSize = moURLConnection.getContentLength();
+				if (mlDownloadSize > -1) {
+					MvMessages.logMessage("File size is " + mlDownloadSize);
+					mbIsChunked = false;
+				} else {
+					MvMessages.logMessage("File size is unknown.");
+					mbIsChunked = true;
 				}
-				
-				if (mURLConnection.getHeaderField("content-disposition") != null) {
-					msFileNameHeader = mURLConnection.getHeaderField("content-disposition");
-					if (msFileNameHeader.indexOf("filename=") != -1) {
-					  if (msFileNameHeader.length() > msFileNameHeader.indexOf("filename=")) {
-					  	msFileNameHeader = msFileNameHeader.substring(msFileNameHeader.indexOf("filename=") + "filename=".length());
-					  	if (msFileNameHeader.indexOf(";") > -1) {
-					  		msFileNameHeader = msFileNameHeader.substring(0,msFileNameHeader.indexOf(";"));
-					  	}
-					  	msFileNameHeader = msFileNameHeader.replace("\"", "").replace("\\", "").replace("\\", "");
-					  	msFilePathWithHeaderName = mLocalPath + File.separator + msFileNameHeader;
-					  	mbDoesHeadersHaveFileName = true;
-					  	MvMessages.logMessage("Filename is " + msFileNameHeader);
-					  }
-					}
-				}
-				
-				mURLConnection.setConnectTimeout(4000);	
-				mURLConnection.connect();	
-				MvMessages.logMessage("Connection response is " + mURLConnection.getResponseCode());
-				
-				miFileSize = mURLConnection.getContentLength();
-				MvMessages.logMessage("Headers " + mURLConnection.getHeaderFields().toString());
-				MvMessages.logMessage(miFileSize + " to be downloaded;");
-				
-				if (mURLConnection.getHeaderField("content-type") != null) {
-					if (mURLConnection.getHeaderField("content-type").contains("text/html")) {
-						mbIsHTML = true;
-					}
-				}
-				
-				for (iTries = 1; iTries < 6; iTries++) {
-					if (iTries > 1) {						
-						mURLConnection.disconnect();
-						mURLConnection = (HttpURLConnection) oURL.openConnection();
-						mURLConnection.setRequestProperty("Range", "bytes=" + miBytesRead + "-");
-						mURLConnection.connect();
-					} else {
-						if (mbDoesHeadersHaveFileName) {							
-							of = new FileOutputStream(msFilePathWithHeaderName);
-						} else {
-							if (mbIsHTML) {
-								of = new FileOutputStream(asLinks[1] + ".htm");
-							} else {
-								of = new FileOutputStream(asLinks[1]);
-							}
+
+				if (moURLConnection.getHeaderFields() != null) {
+					MvMessages.logMessage("Headers are: " + moURLConnection.getHeaderFields().toString());
+					
+					String sDispositionHeader = moURLConnection.getHeaderField("content-disposition");
+
+					if (sDispositionHeader != null) {
+						if (sDispositionHeader.length() > 0) {
+							msHeaderFileName = getFileNameFromHeader(sDispositionHeader);
+							if (msHeaderFileName.length() > 0) {
+								msFilePathname = msFileDirectory + File.separator + msHeaderFileName;
+						  	MvMessages.logMessage("Header filename is " + msHeaderFileName);
+						  }
 						}
 					}
 					
-					try {						
-						in = new BufferedInputStream(mURLConnection.getInputStream());			
-						do {
-							if (isCancelled()) {
-								oRet.mbSuccess = false;
-								oRet.msProblem = "Download cancelled.";
-								oRet.msPossibleSolution = "None required";
-								break;
-							}
-							
-							n = in.read(buf, 0, 1024);
-							miBytesRead = miBytesRead + n;
-							if (n != -1) {
-								of.write(buf, 0, n);
-								if (miFileSize > 0) {
-								  publishProgress(miBytesRead);
-								}
+					mlBytesDownloaded = MvFileIO.getFileSize(msFilePathname);
+					MvMessages.logMessage("Existing file size is "  + mlBytesDownloaded);
+					
+					if ((mlDownloadSize > 0) && (mlBytesDownloaded == mlDownloadSize)) {
+					  MvMessages.logMessage("File already downloaded");
+					  oRet.moResult = msFilePathname;
+					  msMimeType = moURLConnection.getContentType();
+					  oRet.mbSuccess = true;
+					  return(oRet);
+					} else if ((mlDownloadSize > 0) && (mlBytesDownloaded > 0) && (mlBytesDownloaded < mlDownloadSize)) {
+						moURLConnection.disconnect();
+						moURLConnection = (HttpURLConnection) oURL.openConnection();
+						MvMessages.logMessage("Resuming download from " + mlBytesDownloaded);
+						moURLConnection.setRequestProperty("Range", "bytes=" + mlBytesDownloaded + "-");
+					}
+					
+					moURLConnection.setConnectTimeout(4000);				
+					moURLConnection.connect();	
+					MvMessages.logMessage("Connection response is " + moURLConnection.getResponseCode());
+					
+					for (iTries = 1; iTries < 6; iTries++) {
+						if (iTries > 1) {						
+							moURLConnection.disconnect();
+							moURLConnection = (HttpURLConnection) oURL.openConnection();
+							if (mlDownloadSize > -1) {
+								MvMessages.logMessage("Resuming download from " + mlBytesDownloaded);
+							  moURLConnection.setRequestProperty("Range", "bytes=" + mlBytesDownloaded + "-");
+							}  
+							moURLConnection.connect();
+						} else {							
+							if ((mlDownloadSize > 0) && (mlBytesDownloaded > 0) && (mlBytesDownloaded < mlDownloadSize)) {
+								MvMessages.logMessage("Using existing download file.");
+							  of = new FileOutputStream(msFilePathname, true);
 							} else {
-								of.flush();
-								in.close();
-								of.close();
-								msMimeType = mURLConnection.getContentType();
-								oRet.mbSuccess = true;
-							}
-						} while(n != -1);		
-						if (mbDoesHeadersHaveFileName) {
-							oRet.moResult = msFilePathWithHeaderName;
-						} else {
-							if (mbIsHTML) {
-								oRet.moResult = asLinks[1] + ".htm";	
-							} else {
-								oRet.moResult = asLinks[1];
+								MvMessages.logMessage("Using new download file (maybe truncated old one).");
+								of = new FileOutputStream(msFilePathname, false);
 							}
 						}
 						
-						break;
-				  } catch (IOException e) {
-					  oRet.mbSuccess = false;
-						oRet.mException = e;
-						oRet.msProblem = "Download failed. Tries: " + iTries;
-						oRet.msPossibleSolution = "A better download URL or network conditions.";
-						MvMessages.logMessage(oRet.msProblem);
-						e.printStackTrace();					
+						try {						
+							in = new BufferedInputStream(moURLConnection.getInputStream());			
+							do {
+								if (isCancelled()) {
+									oRet.mbSuccess = false;
+									oRet.msProblem = "Download cancelled.";
+									oRet.msPossibleSolution = "None required";
+									iTries =6;
+									of.flush();
+									in.close();
+									of.close();			
+									MvMessages.logMessage("Download cancelled");
+									break;
+								}
+								
+								n = in.read(buf, 0, 1024);
+								mlBytesDownloaded = mlBytesDownloaded + n;
+								if (n > 0) {
+									of.write(buf, 0, n);
+									 publishProgress(mlBytesDownloaded);
+								} else {
+									of.flush();
+									in.close();
+									of.close();
+									msMimeType = moURLConnection.getContentType();
+									oRet.mbSuccess = true;
+								}
+							} while(n != -1);		
+							
+							oRet.moResult = msFilePathname;
+													
+							break;
+					  } catch (IOException e) {
+						  oRet.mbSuccess = false;
+							oRet.mException = e;
+							oRet.msProblem = "Download failed. Tries: " + iTries;
+							oRet.msPossibleSolution = "A better download URL or network conditions.";
+							MvMessages.logMessage(oRet.msProblem);
+							e.printStackTrace();					
+						}
 					}
+				} else {
+					MvMessages.logMessage("Headers are null");
+					oRet.mbSuccess = false;
+					oRet.mException = null;
+					oRet.msProblem = "Headers are null";
+					oRet.msPossibleSolution = "A valid URL (link) is required.";
 				}
 			} catch (MalformedURLException e) {
 				oRet.mbSuccess = false;
@@ -269,7 +287,7 @@ public class MvAsyncDownload extends AsyncTask<String, Integer, MvException> {
 				oRet.msPossibleSolution = "An working Internet connection or a valid website address is required.";
 				MvMessages.logMessage("Have you added INTERNET permission?");
 				e.printStackTrace();
-			}catch (FileNotFoundException e) {
+			} catch (FileNotFoundException e) {
 				oRet.mbSuccess = false;
 				oRet.mException = e;
 				oRet.msProblem = "The link (URL) is broken or missing.";
@@ -285,4 +303,22 @@ public class MvAsyncDownload extends AsyncTask<String, Integer, MvException> {
 		}		
 		return oRet;
   }
+	
+	
+	String getFileNameFromHeader(String asHeader) {
+		String sFileName, sReturn = "";
+		
+		if (asHeader.indexOf("filename=") > -1) {
+		  if (asHeader.length() > asHeader.indexOf("filename=")) {
+		  	sFileName = asHeader.substring(asHeader.indexOf("filename=") + "filename=".length());
+		  	if (sFileName.indexOf(";") > -1) {
+		  		sFileName = sFileName.substring(0,sFileName.indexOf(";"));
+		  	}
+		  	sReturn = sFileName.replace("\"", "").replace("\\", "").replace("\\", "");
+		  }
+		}
+		return(sReturn);
+	}
+	
+	
 }

@@ -6,13 +6,18 @@
  */
 package com.vsubhash.droid.androidwithoutstupid;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
 
 import org.apache.http.util.EncodingUtils;
 
@@ -202,6 +207,26 @@ public class MvFileIO {
 		}
 		return false;
 	} 
+	
+	public static String getFileNameFromPath(String asPath) {
+		File oFile = new File(asPath);
+		if (oFile.exists()) {
+			return(oFile.getName());
+		} else {
+			return("");
+		}
+	}
+	
+	public static long getFileSize(String asPathname) {
+		long lFileSize = -1;
+		if (asPathname != null) {
+		  File oFile = new File(asPathname);
+		  if (oFile.exists()) {
+		  	lFileSize = oFile.length();
+		  }
+		}
+		return(lFileSize);
+	}
 		
 	
 	/**
@@ -250,15 +275,35 @@ public class MvFileIO {
 	 */
   public static MvException getFileAsText(String asTextFile, int iSize) {
   	MvException oRet = new MvException();
-  	
+  	String sRet;
   	byte[] buf = new byte[iSize];
   	FileInputStream oInputStream;
 		try {
 			oInputStream = new FileInputStream(asTextFile);
-			oInputStream.read(buf);
-			oRet.moResult = EncodingUtils.getAsciiString(buf).trim();
-			oInputStream.close();
+			oInputStream.read(buf, 0, buf.length);
+			
+			if (((buf[0] & 0xFF) == 0xFF) && ((buf[1] & 0xFE) == 0xFE)) {
+				sRet = EncodingUtils.getString(buf, "UTF-16LE");	
+			} else if (((buf[0] & 0xFE) == 0xFE) && ((buf[1] & 0xFF) == 0xFF)) {
+				sRet = EncodingUtils.getString(buf, "UTF-16BE");
+			} else if (((buf[0] & 0xFF) == 0xFF) && ((buf[1] & 0xFE) == 0xFE) &&
+								 ((buf[0] & 0x00) == 0x00) && ((buf[1] & 0x00) == 0x00)) {
+				sRet = EncodingUtils.getString(buf, "UTF-32LE");
+			} else if (((buf[0] & 0x00) == 0x00) && ((buf[1] & 0x00) == 0x00) &&
+								 ((buf[0] & 0xFE) == 0xFE) && ((buf[1] & 0xFF) == 0xFF)) {
+				sRet = EncodingUtils.getString(buf, "UTF-32BE");
+			} else {
+				sRet = EncodingUtils.getAsciiString(buf);
+			}
+			
+			oRet.moResult = new String(sRet.getBytes(), "UTF-8");
+			oInputStream.close();		
 			oRet.mbSuccess = true;
+		} catch (UnsupportedEncodingException e) {
+			oRet.msProblem = "The encoding was not correct/supported.";
+			oRet.msPossibleSolution = "Check the encoding";
+			oRet.moResult = "";
+			oRet.mException = e;			
 		} catch (FileNotFoundException e) {
 			oRet.msProblem = "The file was not found.";
 			oRet.msPossibleSolution = "Check the path";
@@ -267,6 +312,11 @@ public class MvFileIO {
 		} catch (IOException e) {
 			oRet.msProblem = "The file could not be read.";
 			oRet.msPossibleSolution = "Check permissions";
+			oRet.moResult = "";
+			oRet.mException = e;
+		} catch (Exception e) {
+			oRet.msProblem = "Unknown exception.";
+			oRet.msPossibleSolution = "Check code";
 			oRet.moResult = "";
 			oRet.mException = e;
 		}		  	
