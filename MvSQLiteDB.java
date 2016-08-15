@@ -21,6 +21,9 @@ import android.database.sqlite.SQLiteStatement;
 
 /**
  * This class provides methods for easy SQLite database operations.
+ * 
+ * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
+ * @version 2016.08.15 
  *
  */
 public class MvSQLiteDB {
