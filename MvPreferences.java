@@ -45,21 +45,48 @@ public class MvPreferences {
   	reload();
   }
   
+	/**
+	 * Creates an instance of this class. Use this constructor in services.
+	 * 
+	 * @param aoApplicationContext
+	 *          context with which this instance needs to be initialized
+	 */
   public MvPreferences(Context aoApplicationContext) {
   	mContext = aoApplicationContext;   	
   	reload();
   }
   
+	/**
+	 * Create an instance of this class with specified preferences.
+	 * 
+	 * @param aCallingActivity
+	 *          activity where the preferences will be changed
+	 * @param iXmlPreferences
+	 *          ID of the settings XML that needs to be loaded
+	 */
   public MvPreferences(Activity aCallingActivity, int iXmlPreferences) {
   	this(aCallingActivity.getApplicationContext(), iXmlPreferences);
   	this.mCallingActivity = aCallingActivity;
-  	this.mContext = this.mCallingActivity.getApplicationContext();  	
+  	this.mContext = this.mCallingActivity.getApplicationContext();  
+  	PreferenceManager.setDefaultValues(
+				this.mContext,
+				iXmlPreferences, 
+				true);  	
+  	reload();
   }
   
+	/**
+	 * Creates an instance of this class with specified preferences.
+	 * 
+	 * @param aoContext
+	 *          context with which this instance needs to be initialized
+	 * @param iXmlPreferences
+	 *          ID of the settings XML that needs to be loaded
+	 */
   public MvPreferences(Context aoContext, int iXmlPreferences) {
   	this.mContext = aoContext;
   	PreferenceManager.setDefaultValues(
-  					mContext,
+  					this.mContext,
   					iXmlPreferences, 
   					true);  	
     reload();  	

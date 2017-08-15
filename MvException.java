@@ -15,7 +15,7 @@ package com.vsubhash.droid.androidwithoutstupid;
  * problem. Use members of this class to add more usefulness to error details. 
  * 
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
- * @version 2016.02.03
+ * @version 2017.08.15
  *
  */
 public class MvException extends Exception {

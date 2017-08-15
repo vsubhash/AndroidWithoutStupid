@@ -24,7 +24,9 @@ import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.text.Layout;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -267,7 +269,7 @@ public class MvMessages {
 							mNotificationID, 
 							aoIntentToLaunch, 
 							0);
-			MvMessages.logMessage("Set broadcast");
+			//MvMessages.logMessage("Set broadcast");
 		} else {
 			aoIntentToLaunch.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 			oNotificationPendingIntent = 
@@ -276,7 +278,7 @@ public class MvMessages {
 							mNotificationID, 
 							aoIntentToLaunch, 
 							PendingIntent.FLAG_UPDATE_CURRENT);
-			MvMessages.logMessage("Set activity launch");
+			//MvMessages.logMessage("Set activity launch");
 		}
 		
 		Notification oNotification = 
@@ -496,7 +498,8 @@ public class MvMessages {
 	 * Displays a dialog prompt for entering text. The dialog contains an
 	 * autocomplete text box and a clear button. This method requires a layout for
 	 * the dialog and an image (drawable) for the erase button. The dialog layout
-	 * should contain an autocomplete text box and an image view.
+	 * should contain an autocomplete text box and an image view. The text entered
+	 * by the end-user will be in the {@link MvPromptResult#moAnswer returned value}.
 	 * 
 	 * <pre>
 	 * &lt;?xml version="1.0" encoding="utf-8"?>
@@ -584,6 +587,7 @@ public class MvMessages {
 		final AutoCompleteTextView aactvAnswer = (AutoCompleteTextView) oAlertDialogView.findViewById(aiAnswerID);
 		aactvAnswer.setText(asAnswer);
 		
+		
 		AlertDialog.Builder adb = new AlertDialog.Builder(this.mCallingActivity);
   	adb.setTitle(asTitle);
   	adb.setMessage(asQuestion);
@@ -600,9 +604,17 @@ public class MvMessages {
 			}
 		});
   	
-		MvPromptResult oResult = new MvPromptResult();
+		final MvPromptResult oResult = new MvPromptResult();
 		oResult.moAnswer = aactvAnswer;
 		oResult.moPrompt = adRet;
+		
+		aactvAnswer.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+			@Override
+			public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+		    oResult.moPrompt.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+				return false;
+			}
+		});
 		
   	return(oResult);
   }	
@@ -661,6 +673,7 @@ public class MvMessages {
 		} 
 		
 		aactvAnswer.setText(asAnswer);
+
 		
 		AlertDialog.Builder adb = new AlertDialog.Builder(this.mCallingActivity);
   	adb.setTitle(asTitle);
@@ -669,7 +682,7 @@ public class MvMessages {
   	adb.setPositiveButton(asOkButtonCaption, aoOkHandler);
   	adb.setNegativeButton(asCancelButtonCaption, aoCancelHandler);
   	
-  	AlertDialog adRet = adb.create();
+  	final AlertDialog adRet = adb.create();
 		
 		aivEraseButton.setOnClickListener(new View.OnClickListener() {			
 			@Override
@@ -678,10 +691,19 @@ public class MvMessages {
 			}
 		});
   	
-		MvPromptResult oResult = new MvPromptResult();
+		final MvPromptResult oResult = new MvPromptResult();
 		oResult.moAnswer = aactvAnswer;
 		oResult.moAnswerOptions = aoAnswerOptions;
 		oResult.moPrompt = adRet;
+		
+		aactvAnswer.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+			@Override
+			public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+				oResult.moPrompt.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+				return false;
+			}
+		});		
+		
 		
   	return(oResult);
   }

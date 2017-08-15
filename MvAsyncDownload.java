@@ -44,7 +44,7 @@ MvAsyncDownload dl =
 </pre></code></blockquote>
  * @see android.os.AsyncTask
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
- * @version 2016.08.15
+ * @version 2017.08.15
  * 
  */
 public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
@@ -53,21 +53,50 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 	HttpURLConnection moURLConnection;
 	long mlDownloadSize;
 	long mlBytesDownloaded = 0;
-	boolean mbIsChunked = true;
+	boolean mbGuessFileName = false;
 	
 	BufferedInputStream in = null;
 	FileOutputStream of = null;
 	
+	/**
+	 * Returns bytes that have been downloaded.
+	 * 
+	 * @return number of downloaded bytes
+	 */
 	public long getDownloadedSize() { return(mlBytesDownloaded); }
+	/**
+	 * Returns byte size of the download (if known).
+	 * @return byte size of the download
+	 */
 	public long getDownloadSize() { return(mlDownloadSize); }
-	public boolean isDownloadSizeUnknown() { return(mbIsChunked); }
+	/**
+	 * Returns name of the download file (if known).
+	 * 
+	 * @return name of the download file
+	 */
+	public String getDownloadFilename() { return(msFilename); }
+	/**
+	 * Returns pathname of the download file.
+	 * 
+	 * @return pathname of the download file
+	 */
 	public String getDownloadFilePathname() { return(msFilePathname); }
+	/**
+	 * Returns mimetype of the download.
+	 * @return mimetype of the download
+	 */
 	public String getMimeType() { return(msMimeType); }
 	
 	private MvAsyncDownload() {
 		super();
 	}	
 	
+	/**
+	 * Asynchronously downloads the specified URL to specified file.
+	 * 
+	 * @param asURL download URL
+	 * @param asFile pathname of local file to which the download needs to be saved
+	 */
 	public MvAsyncDownload(String asURL, String asFile) {
 	  this(asURL, asFile, "");
 	}
@@ -89,9 +118,23 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 		msRemoteUrl = asURL;
 		msFilePathname = asFile;
 		msUserAgent = asUserAgent;
+		mbGuessFileName = false;
 		this.execute(msRemoteUrl, msFilePathname);
 	}
 	
+	/**
+	 * Asynchronously downloads specified URL to specified directory and (if
+	 * specified) guess the file name based on the specified mimetype.
+	 * 
+	 * @param asURL
+	 *          download URL
+	 * @param asPath
+	 *          directory where the file needs to be saved
+	 * @param abGuessFileName
+	 *          whether to guess the file name
+	 * @param asMimeType
+	 *          mimetype of the file with which the filename needs to be guessed
+	 */
 	public MvAsyncDownload(String asURL, String asPath, boolean abGuessFileName, String asMimeType) {
 	  this(asURL, asPath, abGuessFileName, asMimeType, "");
 	}
@@ -116,17 +159,26 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 	 */
 	public MvAsyncDownload(String asURL, String asPath, boolean abGuessFileName, String asMimeType, String asUserAgent) {
 	  this();
-  	msFileDirectory = asPath;	  
+  	  
 	  msRemoteUrl = asURL;
 	  msUserAgent = asUserAgent;
+	  mbGuessFileName = abGuessFileName;
 	  
-	  if (abGuessFileName) {
-		  msFilePathname = asPath + File.separator + URLUtil.guessFileName(asURL, null, asMimeType);
+	  if (mbGuessFileName) {
+	  	msFileDirectory = asPath;
+	  	String sGuessedFilename = URLUtil.guessFileName(asURL, null, asMimeType);
+	  	if (sGuessedFilename.contains(".bin")) {
+	  		msFilename = "unknown-download-" + MvGeneral.getRandomNumber() + ".bin"; 	
+	  	} else {
+	  		msFilename = sGuessedFilename;
+	  	}
+	  	msFilePathname = msFileDirectory + File.separator + msFilename;
 	  } else {
+	  	msFileDirectory =	MvFileIO.getParentDirectoryFromPath(asPath);	
 	  	msFilePathname = asPath;
 	  }
 		
-		MvMessages.logMessage("Set to download " + msRemoteUrl + " to " + msFilePathname);
+		MvMessages.logMessage("Set to download " + msRemoteUrl + "\n\tto " + msFilePathname);
 		this.execute(msRemoteUrl, msFilePathname);	  
 	}	
 	  
@@ -154,22 +206,20 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 		
 		if (asLinks.length == 2) { // url, file
 			try {
-				oURL = new URL(asLinks[0]);
+				oURL = new URL(msRemoteUrl);
 				moURLConnection = (HttpURLConnection) oURL.openConnection();
 				//HttpURLConnection.setFollowRedirects(true);
-				if (msUserAgent.length() > "Mozilla".length()) {
+				if (msUserAgent.length() > "Wget 1".length()) {
 				  moURLConnection.setRequestProperty("User-Agent", msUserAgent);
-					MvMessages.logMessage("Mimicking " + msUserAgent);
-					MvMessages.logMessage("Mimicking useragent");
-				}		
+					// MvMessages.logMessage("Mimicking " + msUserAgent);
+					//MvMessages.logMessage("Mimicking useragent");
+				}
 				
 				mlDownloadSize = moURLConnection.getContentLength();
 				if (mlDownloadSize > -1) {
 					MvMessages.logMessage("File size is " + mlDownloadSize);
-					mbIsChunked = false;
 				} else {
 					MvMessages.logMessage("File size is unknown.");
-					mbIsChunked = true;
 				}
 
 				if (moURLConnection.getHeaderFields() != null) {
@@ -179,10 +229,12 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 
 					if (sDispositionHeader != null) {
 						if (sDispositionHeader.length() > 0) {
-							msHeaderFileName = getFileNameFromHeader(sDispositionHeader);
+							msHeaderFileName = getFileNameFromHeader(sDispositionHeader);							
 							if (msHeaderFileName.length() > 0) {
-								msFilePathname = msFileDirectory + File.separator + msHeaderFileName;
-						  	MvMessages.logMessage("Header filename is " + msHeaderFileName);
+								MvMessages.logMessage("Changed output file from " + msFilePathname);
+								msFilePathname = msFileDirectory + File.separator + MvFileIO.getSafeFileNameFor(msHeaderFileName);
+						  	MvMessages.logMessage("\tto " + msFilePathname);
+						  	msFilename = msHeaderFileName;
 						  }
 						}
 					}
@@ -216,12 +268,13 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 							  moURLConnection.setRequestProperty("Range", "bytes=" + mlBytesDownloaded + "-");
 							}  
 							moURLConnection.connect();
-						} else {							
+						} else {		
+							//MvMessages.logMessage(msFilePathname + " ~ \n" + asLinks[0]);
 							if ((mlDownloadSize > 0) && (mlBytesDownloaded > 0) && (mlBytesDownloaded < mlDownloadSize)) {
 								MvMessages.logMessage("Using existing download file.");
 							  of = new FileOutputStream(msFilePathname, true);
 							} else {
-								MvMessages.logMessage("Using new download file (maybe truncated old one).");
+								MvMessages.logMessage("Using new download file.");
 								of = new FileOutputStream(msFilePathname, false);
 							}
 						}
@@ -245,12 +298,55 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 								mlBytesDownloaded = mlBytesDownloaded + n;
 								if (n > 0) {
 									of.write(buf, 0, n);
+									if (msFilename == null) {
+										msFilename = MvFileIO.getFileNameFromPath(msFilePathname);
+									}
 									 publishProgress(mlBytesDownloaded);
 								} else {
 									of.flush();
 									in.close();
 									of.close();
 									msMimeType = moURLConnection.getContentType();
+									MvMessages.logMessage("Mime = " + msMimeType);
+									
+									String sNewExtension, sNewFileName;
+									if ((mbGuessFileName) && (msFilename.endsWith(".bin"))) {
+										if (msMimeType.contains("text/html")) {
+											sNewExtension = ".htm";
+										} else if (msMimeType.contains("text/plain")) {
+											sNewExtension = ".txt";
+										} else if (msMimeType.contains("application/pdf")) {
+											sNewExtension = ".pdf";
+										} else if (msMimeType.contains("application/zip")) {
+											sNewExtension = ".zip";
+										} else if (msMimeType.contains("audio/mpeg")) {
+											sNewExtension = ".mp3";
+										} else if (msMimeType.contains("image/png")) {
+											sNewExtension = ".png";
+										} else if (msMimeType.contains("image/jpeg")) {
+											sNewExtension = ".jpg";
+										} else if (msMimeType.contains("image/gif")) {
+											sNewExtension = ".gif";
+										} else if (msMimeType.contains("video/mp4")) {
+											sNewExtension = ".mp4";
+										} else if (msMimeType.contains("video/mpeg")) {
+											sNewExtension = ".mpg";
+										} else {
+											sNewExtension = ".bin";
+										}
+										
+										sNewFileName = MvFileIO.getFileNameWithoutExtension(msFilePathname) + sNewExtension;
+										sNewFileName = MvFileIO.getSafeFileNameFor(sNewFileName);
+										sNewFileName = MvFileIO.getIncrementedFileName(msFileDirectory + File.separator + sNewFileName);
+										
+										MvException oRename = MvFileIO.renameFile(msFilePathname, msFileDirectory + File.separator + sNewFileName);		
+										if (oRename.mbSuccess) {
+											msFilename = sNewFileName;
+											msFilePathname = msFileDirectory + File.separator + sNewFileName;
+										} else {
+											MvMessages.logMessage("Unable to rename file as " + sNewFileName + " because of " + oRename.msProblem);
+										}
+									}
 									oRet.mbSuccess = true;
 								}
 							} while(n != -1);		
@@ -290,7 +386,7 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 			} catch (FileNotFoundException e) {
 				oRet.mbSuccess = false;
 				oRet.mException = e;
-				oRet.msProblem = "The link (URL) is broken or missing.";
+				oRet.msProblem = "The link (URL) or the file path is invalid." + msFilePathname;
 				oRet.msPossibleSolution = "An existing link (URL) is required.";
 				e.printStackTrace();
 			} catch (IOException e) {

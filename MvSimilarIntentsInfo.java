@@ -88,7 +88,7 @@ public class MvSimilarIntentsInfo {
 		
 		if (!oOtherIntentsInfoList.isEmpty()) {
 			for (ResolveInfo oResolveInfo: oOtherIntentsInfoList) {
-				MvMessages.logMessage("Activity: " + oResolveInfo.activityInfo.name);
+				//MvMessages.logMessage("Activity: " + oResolveInfo.activityInfo.name);
 				if (oResolveInfo.activityInfo.name.toLowerCase().contains(asExcludeThisClassName.toLowerCase())) {				
 					MvMessages.logMessage("Excluding: " + oResolveInfo.activityInfo.name);
 				} else {					

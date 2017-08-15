@@ -257,7 +257,7 @@ public class MvReflection {
 	 */
   public static MvException getFieldAsInt(String asFieldName, Object aoInstance) {
   	MvException oResult = new MvException();
-  	for (Field oField : aoInstance.getClass().getDeclaredFields()) {
+  	for (Field oField : aoInstance.getClass().getFields()) {
 			MvMessages.logMessage(oField.getName());
   		if (oField.getName().contentEquals(asFieldName)) {
 				try {

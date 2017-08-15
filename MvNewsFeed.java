@@ -140,7 +140,7 @@ public class MvNewsFeed {
 					this.msFeedLocation = asUrl;
 				}
 			} else {
-				MvMessages.logMessage("no channel nodes");
+				//MvMessages.logMessage("no channel nodes");
 				oDomNodes = doc.getElementsByTagName("rdf:RDF");
 				n = oDomNodes.getLength();
 				if (n > 0) {
@@ -383,6 +383,12 @@ public class MvNewsFeed {
     	  	  	  								(oArticleElement.getAttribute("href").toLowerCase().endsWith(".wma")) ||
     	  	  	  								(oArticleElement.getAttribute("href").toLowerCase().endsWith(".wmv"))) {
     	  	  	  						  sArticleEnclosure = oArticleElement.getAttribute("href");
+    	  	  	  						} else if (oArticleElement.getAttribute("href").toLowerCase().endsWith(".bmp") ||
+    	  	  	  								oArticleElement.getAttribute("href").toLowerCase().endsWith(".gif") ||
+    	  	  	  								oArticleElement.getAttribute("href").toLowerCase().endsWith(".jpg") ||
+    	  	  	  								oArticleElement.getAttribute("href").toLowerCase().endsWith(".jpeg") ||
+    	  	  	  								oArticleElement.getAttribute("href").toLowerCase().endsWith(".png")) {
+    	  	  	  							sArticleImage = oArticleElement.getAttribute("href");
     	  	  	  						} else {
     	  	  	  							sArticleLink = oArticleElement.getAttribute("href");
     	  	  	  						}
@@ -521,9 +527,25 @@ public class MvNewsFeed {
 										}
 									} else if (oArticleChild.getNodeName().toLowerCase().contentEquals("enclosure")) {
 										if (oArticleElement.hasAttribute("url")) {
-									    sArticleEnclosure = oArticleElement.getAttribute("url");
+											sArticleEnclosure = oArticleElement.getAttribute("url");
+											if (sArticleEnclosure.endsWith(".bmp") ||
+													sArticleEnclosure.endsWith(".gif") ||
+													sArticleEnclosure.endsWith(".jpeg") ||
+													sArticleEnclosure.endsWith(".jpg") ||
+													sArticleEnclosure.endsWith(".png")) {
+												sArticleImage = sArticleEnclosure;
+												sArticleEnclosure = "";
+											} else if (oArticleElement.hasAttribute("type")) {
+												if (oArticleElement.getAttribute("type").contentEquals("image/gif") ||
+														oArticleElement.getAttribute("type").contentEquals("image/jpg") ||
+														oArticleElement.getAttribute("type").contentEquals("image/jpeg") ||
+														oArticleElement.getAttribute("type").contentEquals("image/png")) {
+													sArticleImage = sArticleEnclosure;
+													sArticleEnclosure = "";
+												}
+											}
 										}
-									}  
+									}	
 								}  								
   						}
   										
@@ -533,23 +555,27 @@ public class MvNewsFeed {
 							}
   										
 							oNewArticle = new MvNewsFeedMessage(sArticleTitle, sArticleLink, dtArticlePublished, sArticleContent, sArticleGuid);
-							if (sArticleImage.length() > "http://www.a.i".length()) {
+							
+							if (sArticleImage.length() > MIN_URL_LENGTH) {
 								oNewArticle.msMessageImageLink = sArticleImage;
 							}
+							
 							if (sArticleEnclosure.length() > MIN_URL_LENGTH) {
 								oNewArticle.msMessageEnclosure = sArticleEnclosure;
-	  	  	  	  if (sArticleLink.length() < MIN_URL_LENGTH) {
-	  	  	  	  	oNewArticle.msMessageLink = sArticleEnclosure;
-	  	  	  	  }
 							} else if (sArticleLink.endsWith(".ogg") || 
-					  	  	  		 sArticleLink.endsWith(".ogv") ||
-					  	  	  		 sArticleLink.endsWith(".mp3") ||
-					  	  	  		 sArticleLink.endsWith(".mp4") ||
-					  	  	  		 sArticleLink.endsWith(".mov") ||
-					  	  	  		 sArticleLink.endsWith(".wma") ||
-					  	  	  		sArticleLink.endsWith(".wmv")) {
-  	  	  	  	oNewArticle.msMessageEnclosure = sArticleLink;  					  	  	  	  	  	  	
+			  	  	  		 sArticleLink.endsWith(".ogv") ||
+			  	  	  		 sArticleLink.endsWith(".mp3") ||
+			  	  	  		 sArticleLink.endsWith(".mp4") ||
+			  	  	  		 sArticleLink.endsWith(".mov") ||
+			  	  	  		 sArticleLink.endsWith(".wma") ||
+			  	  	  		sArticleLink.endsWith(".wmv")) {
+									oNewArticle.msMessageEnclosure = sArticleLink;
+							}
+							
+	  	  	  	if (sArticleLink.length() < MIN_URL_LENGTH) {
+	  	  	  	  	oNewArticle.msMessageLink = sArticleEnclosure;
 	  	  	  	}
+	  	  	  	  
 							this.moMessages.add(oNewArticle);
   					} 
   			 	}

@@ -35,6 +35,7 @@ import android.media.MediaPlayer;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.preference.PreferenceManager;
 import android.text.ClipboardManager;
 import android.view.View;
@@ -54,7 +55,7 @@ import android.webkit.URLUtil;
  * </pre></code></blockquote>
  * 
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
- * @version 2016.08.15
+ * @version 2017.08.15
  *
  */
 public class MvGeneral {
@@ -72,6 +73,14 @@ public class MvGeneral {
 	 */
 	public boolean mIsSoundOn = true;
 	
+	/**
+	 * Creates a new instance and initializes it with the context of specified
+	 * activity.
+	 * 
+	 * @param aoCallingActivity
+	 *          activity whose context needs to be used to initialize this
+	 *          instance
+	 */
 	public MvGeneral(Activity aoCallingActivity) {
 		mApplicationContext = aoCallingActivity.getApplicationContext();
 		mClipboardManager = 
@@ -80,6 +89,13 @@ public class MvGeneral {
 		
 	}
 	
+	/**
+	 * Creates a new instance and initializes it with specified context. Use this
+	 * constructor in services.
+	 * 
+	 * @param aoApplicationContext
+	 *          context used to initialize this instance
+	 */
 	public MvGeneral(Context aoApplicationContext) {
 		mApplicationContext = aoApplicationContext;
 		mClipboardManager = 
@@ -89,6 +105,9 @@ public class MvGeneral {
 	}	
 	
 	
+	/**
+	 * Stop {@link #playRingTone() playing the current ring tone}.
+	 */
 	public void stopRingTone() {
 		if (moRingTone != null) {
 			if (moRingTone.isPlaying()) {
@@ -97,6 +116,11 @@ public class MvGeneral {
 		}
 	}
 	
+	/**
+	 * Play the the {@link #moRingTone current ring tone}.
+	 * 
+	 * @return
+	 */
 	public boolean playRingTone() {
 		if (moRingTone == null) {
 			Uri oAlarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
@@ -184,6 +208,123 @@ public class MvGeneral {
 		}
 	}
 	
+	
+	/**
+	 * Displays a launcher dialog for specified file.
+	 * 
+	 * @param asFilePath pathname of the file
+	 */
+	public void launchFile(String asFilePath) {
+		launchFile(asFilePath, "");
+	}
+	
+	/**
+	 * Displays a launcher dialog for specified file.
+	 * 
+	 * @param asFilePath pathname of the file
+	 * @param asMimeType mimetype of the file
+	 */
+	public void launchFile(String asFilePath, String asMimeType) {
+		Intent oFileLaunchIntent = null;
+		String asFilePathLowerCase = asFilePath.toLowerCase();
+		
+		if (asFilePathLowerCase.endsWith(".3gp") ||
+				asFilePathLowerCase.endsWith(".amv") ||
+				asFilePathLowerCase.endsWith(".asf") ||
+				asFilePathLowerCase.endsWith(".dat") ||
+				asFilePathLowerCase.endsWith(".flv") || 
+				asFilePathLowerCase.endsWith(".ogv") ||
+				asFilePathLowerCase.endsWith(".mov") ||
+				asFilePathLowerCase.endsWith(".mpeg") ||
+				asFilePathLowerCase.endsWith(".mpg") ||
+				asFilePathLowerCase.endsWith(".mp4") ||
+				asFilePathLowerCase.endsWith(".m4v") ||
+				asFilePathLowerCase.endsWith(".mkv") ||
+				asFilePathLowerCase.endsWith(".vob") ||
+				asFilePathLowerCase.endsWith(".wmv")
+				) {
+			oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "video/mp4");
+	  } else if (
+				asFilePathLowerCase.endsWith(".ogg") ||
+				asFilePathLowerCase.endsWith(".mp3") ||
+				asFilePathLowerCase.endsWith(".m4a") ||
+				asFilePathLowerCase.endsWith(".spx") ||
+				asFilePathLowerCase.endsWith(".wav") ||
+				asFilePathLowerCase.endsWith(".wma")
+				) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "audio/mpeg");
+	  } else if (
+	  		asFilePathLowerCase.endsWith(".bmp") ||
+				asFilePathLowerCase.endsWith(".gif") ||
+				asFilePathLowerCase.endsWith(".jpeg") ||
+				asFilePathLowerCase.endsWith(".jpg") ||
+				asFilePathLowerCase.endsWith(".png") ||
+				asFilePathLowerCase.endsWith(".tiff") ||
+				asFilePathLowerCase.endsWith(".tiff")
+				) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "image/jpeg");
+	  } else if (asFilePathLowerCase.endsWith("odt")) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "application/vnd.oasis.opendocument.text");
+	  } else if (asFilePathLowerCase.endsWith(".doc") || asFilePathLowerCase.endsWith(".docx")) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "application/vnd.msword");
+	  } else if (asFilePathLowerCase.endsWith(".xls") ||	asFilePathLowerCase.endsWith(".xlsx")) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse(asFilePath), "application/vnd.ms-excel");
+	  } else if (asFilePathLowerCase.endsWith("ods")) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "application/vnd.oasis.opendocument.spreadsheet");
+	  } else if (
+				asFilePathLowerCase.endsWith(".ppt") ||	asFilePathLowerCase.endsWith(".pps") ||
+				asFilePathLowerCase.endsWith(".pptx") || asFilePathLowerCase.endsWith(".ppsx")
+				) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "application/vnd.ms-powerpoint");
+	  } else if (asFilePathLowerCase.endsWith("odp")) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "application/vnd.oasis.opendocument.presentation");	  
+	  } else if (asFilePathLowerCase.endsWith(".pdf")) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "application/pdf");
+	  } else if ((asFilePathLowerCase.endsWith(".txt")) ||
+	       (asFilePathLowerCase.endsWith(".text"))) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "text/plain");
+	  }  else if ((asFilePathLowerCase.endsWith(".zip")) ||
+	              (asFilePathLowerCase.endsWith(".rar"))) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "");
+	  }  else if ((asFilePathLowerCase.endsWith(".htm")) ||
+	  						(asFilePathLowerCase.endsWith(".html"))) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "text/html");
+	  } else if (asFilePathLowerCase.endsWith(".apk")) {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), "application/vnd.android.package-archive");
+		} else if (!asMimeType.contentEquals("")) {
+			oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setDataAndType(Uri.parse("file://" + asFilePath), asMimeType);
+	  } else {
+	  	oFileLaunchIntent = new Intent(Intent.ACTION_VIEW);
+			oFileLaunchIntent.setData(Uri.parse("file://" + asFilePath));
+	  }
+		
+		if (oFileLaunchIntent != null) {
+			try {
+				oFileLaunchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		    mApplicationContext.startActivity(oFileLaunchIntent);
+			} catch (Exception e) {
+				MvMessages.logMessage("Sorry. There was an error launching the file.");
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	
 	/**
 	 * Returns text in the clipboard memory.
 	 * @return text in the clipboard (empty string if clipboard contains no data)
@@ -212,6 +353,49 @@ public class MvGeneral {
 		}
 	}
 
+	
+	/**
+	 * Returns version name of the application with specified context.
+	 * 
+	 * @param aoApplicationContext
+	 *          context whose version name needs to be known
+	 * @return package version name
+	 */
+	public static String getPackageVersionName(Context aoApplicationContext) {
+  	String sPackageName, sVersionName = "";
+  	sPackageName = aoApplicationContext.getPackageName();
+  	try {
+  		sVersionName = aoApplicationContext.getPackageManager().getPackageInfo(sPackageName, 0).versionName;
+		} catch (NameNotFoundException e) {
+			MvMessages.logMessage("Error in package info: " + e.getMessage());
+			e.printStackTrace();
+		}
+  	return(sVersionName);
+	}
+	
+
+	/**
+	 * Returns version code of the application with specified context.
+	 * 
+	 * @param aoApplicationContext
+	 *          context whose version code needs to be known
+	 * @return version code
+	 */
+	public static int getPackageVersionCode(Context aoApplicationContext) {
+  	String sPackageName;
+  	int iVersionCode = 0;
+  	sPackageName = aoApplicationContext.getPackageName();
+  	try {
+  		iVersionCode = aoApplicationContext.getPackageManager().getPackageInfo(sPackageName, 0).versionCode;
+		} catch (NameNotFoundException e) {
+			MvMessages.logMessage("Error in package info: " + e.getMessage());
+			e.printStackTrace();
+		}
+  	return(iVersionCode);
+	}
+	
+	
+	
   /**
    * Returns name of specified constant in specified class.
    * 
@@ -264,6 +448,11 @@ public class MvGeneral {
 		return(sTimestamp);
 	}
 	
+	/**
+	 * Returns current date with hours, minutes, and seconds set to 0.
+	 * 
+	 * @return current date with hours, minutes, and seconds set to 0
+	 */
 	public static Date getCurrentDateWithZeroedTime() {
 		Date dtReturn = new Date();
 		
@@ -274,6 +463,11 @@ public class MvGeneral {
 		return(dtReturn);
 	}
 	
+	/**
+	 * Returns current date in &quot;dd MMMM yyyy&quot; format.
+	 * 
+	 * @return current date
+	 */
 	public static String getCurrentDate() {
 		Date dt = new Date();
    	String sReturn = "";
@@ -285,6 +479,11 @@ public class MvGeneral {
 		return(sReturn);
 	}
 	
+	/**
+	 * Returns current time in &quot;HH:mm:ss&quot; format.
+	 * 
+	 * @return current time
+	 */
 	public static String getCurrentTime() {
 		Date dt = new Date();
    	String sReturn = "";
@@ -296,6 +495,11 @@ public class MvGeneral {
 		return(sReturn);
 	}
 	
+	/**
+	 * Returns current datetime in &quot;dd MMMM yyyy HH:mm:ss&quot;.
+	 * 
+	 * @return current datetime
+	 */
 	public static String getCurrentDateTime() {
 		Date dt = new Date();
    	String sReturn = "";
@@ -340,6 +544,13 @@ public class MvGeneral {
   	return(oRetBuff.toString());
   }
 	
+	/**
+	 * Returns specified date in SQL format with leading zeroes wherever required.
+	 * 
+	 * @param adDateToBeConverted
+	 *          date that needs to be formatted
+	 * @return date in SQL format
+	 */
   public static String getSqlDate(Date adDateToBeConverted) {
 
   	StringBuffer sRet = new StringBuffer();
@@ -470,12 +681,8 @@ public class MvGeneral {
 			}
 			
 			sRet = asInput;
-//			if (abOnlyAnsi) {
-				// sRet = sRet.replaceAll("[^A-Za-z0-9_\\-]", "_");
-	//		} 
-			
+
 			sRet = sRet.replaceAll("[^A-Za-z0-9]", sSeparator);
-			// sRet = sRet.replaceAll("[\\s\\c/:\\?\\=[:punct:]#\\|]+", sSeparator);
 			
 			sRet = sRet.replaceAll(sSeparator + sSeparator, sSeparator);
 			sRet = sRet.replaceAll(sSeparator + sSeparator, sSeparator);
@@ -508,32 +715,7 @@ public class MvGeneral {
 		}
 		return(iRet);
 	}
-	
-/*	
-	public ArrayList<Intent> getChooserIntentsExcept(Intent aoOriginalIntent, String asExclude) {
-		ArrayList<Intent> oValidIntents = new ArrayList<Intent>();
 		
-		List<ResolveInfo> oMatchingActivities = mCallingActivity.getApplicationContext().getPackageManager().queryIntentActivities(aoOriginalIntent, PackageManager.MATCH_DEFAULT_ONLY);
-		
-		if (!oMatchingActivities.isEmpty()) {
-			for (ResolveInfo oActivityInfo : oMatchingActivities) {
-				if (!oActivityInfo.activityInfo.packageName.toLowerCase().contentEquals(asExclude.toLowerCase())) {
-					try {
-						oValidIntents.add(
-								new Intent(mCallingActivity.getApplicationContext(),
-										Class.forName(oActivityInfo.activityInfo.packageName)));
-					} catch (ClassNotFoundException e) {
-						//e.printStackTrace();
-					}
-				}
-			}
-		}
-		
-		return(oValidIntents);
-	}
-	*/
-	
-	
 	/**
 	 * Starts a synchronous download from specified URL and save it
 	 * to specified file path. This method should not be called in 
@@ -624,7 +806,7 @@ public class MvGeneral {
 			if (asUserAgent.length() > "Mozilla".length()) {
 				mURLConnection.setRequestProperty("User-Agent", asUserAgent);
 				//MvMessages.logMessage("Mimicking" + asUserAgent);
-				MvMessages.logMessage("Mimicking");
+				//MvMessages.logMessage("Mimicking");
 			}
 			mURLConnection.setConnectTimeout(5000);	
 			mURLConnection.connect();	

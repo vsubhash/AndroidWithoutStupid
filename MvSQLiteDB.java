@@ -92,7 +92,7 @@ public class MvSQLiteDB {
 			for (String sSQL : aoTableCreationSqlList) {
 				if (!isOpen()) {
 					if (!openDB(true).mbSuccess) {
-						MvMessages.logMessage("Database at " + msLocation + " cannot be opened.");
+						//MvMessages.logMessage("Database at " + msLocation + " cannot be opened.");
 						break;
 					}
 				}
@@ -144,10 +144,10 @@ public class MvSQLiteDB {
 				InputStream oAssetsDbStream = aoCallingContext.getAssets().open(asFromAssetsDatabase);
 				oCopyDatabase = MvFileIO.copyFile(oAssetsDbStream, msLocation);
 				if (oCopyDatabase.mbSuccess) {
-					MvMessages.logMessage("Private database copied");
+					//MvMessages.logMessage("Private database copied");
 					mbIsAvailable = true;
 				} else {
-					MvMessages.logMessage("Private database could not be copied");
+					//MvMessages.logMessage("Private database could not be copied");
 					mbIsAvailable = false;
 				}
 			} catch (IOException e) {
@@ -317,6 +317,8 @@ public class MvSQLiteDB {
 					return(true);
 				}
 			}
+		} else {
+			MvMessages.logMessage("isOpen: DB is not available");
 		}
 		return(false);
 	}
@@ -327,9 +329,13 @@ public class MvSQLiteDB {
 	public void closeDB() {
 		if (mbIsAvailable) {
 			if (isOpen()) {
-				MvMessages.logMessage("DB closed");
 				moDB.close();
+				//MvMessages.logMessage("closeDB: DB closed");
+			} else {
+				MvMessages.logMessage("closeDB: DB is not open.");
 			}
+		} else {
+			MvMessages.logMessage("closeDB: DB is not available.");
 		}
 	}		
 	
