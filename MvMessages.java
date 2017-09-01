@@ -53,7 +53,7 @@ oMessages.showNotification("New Message",
  * 
  * 
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
- * @version 2015.02.13
+ * @version 2017.09.01
  * 
  */
 public class MvMessages {
@@ -383,8 +383,8 @@ public class MvMessages {
 	
 	
 	/**
-	 * Returns a menu dialog containing specified options, and displays
-	 * the menu if specified.
+	 * Returns a menu dialog containing options from specified array, and if
+	 * specified automatically displays the menu dialog.
 	 * 
 	 * @param asTitle
 	 *          title of the dialog
@@ -393,7 +393,8 @@ public class MvMessages {
 	 * @param aoListener
 	 *          {@link DialogInterface.OnClickListener} listener that handles user
 	 *          interactions with the dialog
-	 * @param abAutoShow whether the menu needs to be automatically displayed after it is
+	 * @param abAutoShow
+	 *          whether the menu needs to be automatically displayed after it is
 	 *          created
 	 * @return the new menu
 	 */
@@ -421,7 +422,8 @@ public class MvMessages {
 	
 	
 	/**
-	 * Shows a dialog with a menu containing specified options.
+	 * Returns a menu dialog containing options from specified list, and if
+	 * specified automatically displays the menu dialog.
 	 * 
 	 * @param asTitle
 	 *          title of the dialog
@@ -449,7 +451,7 @@ public class MvMessages {
 	
 
 	/**
-	 * Displays a menu of options.
+	 * Displays a menu dialog containing options from specified array.
 	 * 
 	 * @param asTitle
 	 *          title of the menu
@@ -458,12 +460,13 @@ public class MvMessages {
 	 * @param aoListener
 	 *          "onclick" listener for the menu options
 	 */
-	public void showOptionsMenu(String asTitle, String[] asaOptions, DialogInterface.OnClickListener aoListener) {
+	public void showOptionsMenu(String asTitle, String[] asaOptions,
+															DialogInterface.OnClickListener aoListener) {
 		showOptionsMenu(asTitle, asaOptions, aoListener, true);
 	}
 
 	/**
-	 * Displays a menu of options.
+	 * Displays a menu dialog containing options from specified list.
 	 * 
 	 * @param asTitle
 	 *          title of the menu
@@ -473,20 +476,37 @@ public class MvMessages {
 	 *          "onclick" listener for the menu options
 	 */
 	public void showOptionsMenu(String asTitle, List<String> aoOptionsList, 
-			DialogInterface.OnClickListener aoListener) {
+															DialogInterface.OnClickListener aoListener) {
 		showOptionsMenu(asTitle, aoOptionsList, aoListener, true);
 	}	
 	
 	
+	/**
+	 * This class represents a dialog with an automcomplete text entry box and
+	 * drop-down menu.
+	 * 
+	 */
 	public class MvPromptResult {
+		/**
+		 * Represents the dialog box.
+		 */
 		public AlertDialog moPrompt;
+		/**
+		 * Represents the autocomplete text entry box.
+		 */
 		public AutoCompleteTextView moAnswer;
+		/**
+		 * Represents the drop-down menu of options.
+		 */
 		public Spinner moAnswerOptions;
 		
 		public MvPromptResult() {
 			super();
 		}
 		
+		/**
+		 * Displays the menu dialog and waits.
+		 */
 		public void show() {
 			this.moPrompt.show();
 		}

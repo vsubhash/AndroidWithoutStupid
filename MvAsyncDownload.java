@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.UnknownHostException;
 
 import android.os.AsyncTask;
@@ -44,7 +45,7 @@ MvAsyncDownload dl =
 </pre></code></blockquote>
  * @see android.os.AsyncTask
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
- * @version 2017.08.15
+ * @version 2017.09.01
  * 
  */
 public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
@@ -208,11 +209,30 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 			try {
 				oURL = new URL(msRemoteUrl);
 				moURLConnection = (HttpURLConnection) oURL.openConnection();
-				//HttpURLConnection.setFollowRedirects(true);
+				
 				if (msUserAgent.length() > "Wget 1".length()) {
 				  moURLConnection.setRequestProperty("User-Agent", msUserAgent);
 					// MvMessages.logMessage("Mimicking " + msUserAgent);
 					//MvMessages.logMessage("Mimicking useragent");
+				}
+				
+			// Handle redirects
+				int iResponseCode = moURLConnection.getResponseCode();
+				if ((iResponseCode == HttpURLConnection.HTTP_MOVED_TEMP) || 
+						(iResponseCode == HttpURLConnection.HTTP_MOVED_PERM) ||
+						(iResponseCode == HttpURLConnection.HTTP_SEE_OTHER)) {
+					if (moURLConnection.getHeaderField("Location") != null) {						
+						String sNewUrl = moURLConnection.getHeaderField("Location");
+						MvMessages.logMessage("Redirected to " + sNewUrl);
+						oURL = new URL(sNewUrl);
+						moURLConnection = (HttpURLConnection) oURL.openConnection();
+					} else {
+						MvMessages.logMessage("Redirected but no new location");
+						oRet.mbSuccess = false;
+						oRet.msProblem = "Redirected but no new location";
+						oRet.msPossibleSolution = "Check headers";
+						return(oRet);
+					}
 				}
 				
 				mlDownloadSize = moURLConnection.getContentLength();

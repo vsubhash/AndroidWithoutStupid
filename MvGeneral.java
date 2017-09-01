@@ -12,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -55,7 +56,7 @@ import android.webkit.URLUtil;
  * </pre></code></blockquote>
  * 
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
- * @version 2017.08.15
+ * @version 2017.09.01
  *
  */
 public class MvGeneral {
@@ -323,6 +324,39 @@ public class MvGeneral {
 			}
 		}
 	}
+	
+	
+	public static String escapeXml(String asText) {
+	  StringBuilder oXmlBuff = new StringBuilder();
+	  if (asText == null) { return(""); };
+	  for (int i = 0; i < asText.length(); i++) {
+	    char c = asText.charAt(i);
+	    switch (c) {
+	      case '<': 
+	      	oXmlBuff.append("&lt;"); 
+	      	break;
+	      case '>': 
+	      	oXmlBuff.append("&gt;"); 
+	      	break;
+	      case '\"': 
+	      	oXmlBuff.append("&quot;"); 
+	      	break;
+	      case '&': 
+	      	oXmlBuff.append("&amp;"); 
+	      	break;
+	      case '\'': 
+	      	oXmlBuff.append("&apos;"); 
+	      	break;
+	      default:
+					if (c > 0x7e) {
+					    oXmlBuff.append("&#" + ((int) c) + ";");
+					} else
+					   oXmlBuff.append(c);
+					}
+	   	}
+	   return(oXmlBuff.toString());
+	}
+	
 	
 	
 	/**
@@ -787,7 +821,7 @@ public class MvGeneral {
 	 */
 	public static MvException startSyncDownload(String asURL, String asPath, boolean abGuessFileName, String asMimeType, String asUserAgent) {
 		URL oURL;
-		URLConnection mURLConnection;
+		HttpURLConnection moURLConnection;
 		MvException oRet = new MvException();
 		byte[] buf = new byte[1024];
 		int n = 0;
@@ -802,15 +836,36 @@ public class MvGeneral {
 		
 		try {
 			oURL = new URL(asURL);
-			mURLConnection = oURL.openConnection();
+			moURLConnection = (HttpURLConnection) oURL.openConnection();
 			if (asUserAgent.length() > "Mozilla".length()) {
-				mURLConnection.setRequestProperty("User-Agent", asUserAgent);
+				moURLConnection.setRequestProperty("User-Agent", asUserAgent);
 				//MvMessages.logMessage("Mimicking" + asUserAgent);
 				//MvMessages.logMessage("Mimicking");
 			}
-			mURLConnection.setConnectTimeout(5000);	
-			mURLConnection.connect();	
-			BufferedInputStream in = new BufferedInputStream(mURLConnection.getInputStream());
+			moURLConnection.setConnectTimeout(5000);	
+			
+			// Handle redirects
+			int iResponseCode = moURLConnection.getResponseCode();
+			if ((iResponseCode == HttpURLConnection.HTTP_MOVED_TEMP) || 
+					(iResponseCode == HttpURLConnection.HTTP_MOVED_PERM) ||
+					(iResponseCode == HttpURLConnection.HTTP_SEE_OTHER)) {
+				if (moURLConnection.getHeaderField("Location") != null) {						
+					String sNewUrl = moURLConnection.getHeaderField("Location");
+					MvMessages.logMessage("Redirected to " + sNewUrl);
+					oURL = new URL(sNewUrl);
+					moURLConnection = (HttpURLConnection) oURL.openConnection();
+				} else {
+					MvMessages.logMessage("Redirected but no new location");
+					oRet.mbSuccess = false;
+					oRet.msProblem = "Redirected but no new location";
+					oRet.msPossibleSolution = "Check headers";
+					return(oRet);
+				}
+			}
+			
+			
+			moURLConnection.connect();	
+			BufferedInputStream in = new BufferedInputStream(moURLConnection.getInputStream());
 			
 			try {
 				FileOutputStream of = new FileOutputStream(asPath);
