@@ -6,19 +6,15 @@
  */
 package com.vsubhash.droid.androidwithoutstupid;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import org.apache.http.util.EncodingUtils;
 
 import android.os.Debug;
@@ -196,10 +192,9 @@ public class MvFileIO {
 	
 	
 	/**
-	 * 
-	 * 
-	 * @param asPath
-	 * @return
+	 * Deletes specified directory and all its subdirectories and files.
+	 * @param asPath directory which needs to be deleted
+	 * @return whether it was successful
 	 */
 	public static boolean deletePath(String asPath) {
 		return(deletePath(asPath, false));
@@ -207,7 +202,7 @@ public class MvFileIO {
 	
 	/**
 	 * Deletes the file or directory. As this method internally calls
-	 * itself, use {@link isPathExist} afterwards to see if the method was
+	 * itself, use {@link #isPathExists(String)} afterwards to see if the method was
 	 * successful.
 	 * 
 	 * @param asPath path of the file or directory
@@ -432,6 +427,43 @@ public class MvFileIO {
 		}
 		return(lFileSize);
 	}
+	
+	public static String getFileCheckSums(String asPathname) {
+		String sRet = "";
+		MessageDigest oHashMd5 = null, oHashSha1 = null;
+		FileInputStream fis;
+		byte[] bBuffer = new byte[1024*1024];
+    int iBytesRead = 0;
+    
+		if (isFile(asPathname)) {
+			try {
+				oHashMd5 = MessageDigest.getInstance("MD5");
+				oHashSha1 = MessageDigest.getInstance("SHA1");				
+				fis = new FileInputStream(asPathname);
+				do {
+	    		iBytesRead = fis.read(bBuffer);
+	    		if (iBytesRead < 1) { continue; }
+	    		oHashMd5.update(bBuffer, 0, iBytesRead);
+	    		oHashSha1.update(bBuffer, 0, iBytesRead);
+	    	} while (iBytesRead > 0);
+				String sHashMd5 = MvGeneral.convertByteArrayToHexString(oHashMd5.digest());
+				String sHashSha1 = MvGeneral.convertByteArrayToHexString(oHashSha1.digest());
+				sRet = "MD5: " + sHashMd5 + System.getProperty("line.separator") + "SHA1: " + sHashSha1;
+				fis.close();
+			} catch (NoSuchAlgorithmException nsae) {
+				sRet = "Checksum not supported";
+				nsae.printStackTrace();
+			} catch (FileNotFoundException nfe) {
+				MvMessages.logMessage("File not found - " + asPathname);
+				nfe.printStackTrace();
+			} catch (IOException ioe) {
+				MvMessages.logMessage("Can't read from - " + asPathname);
+				ioe.printStackTrace();
+			}	
+		}
+		
+		return(sRet);
+	}
 
 	
 	/**
@@ -439,6 +471,7 @@ public class MvFileIO {
 	 * 
 	 * @param asTextFile
 	 *          text file whose text content is required.
+	 * @param iSize maximum size of the text content to get          
 	 * @return outcome of the operation
 	 */
   public static MvException getFileAsText(String asTextFile, int iSize) {
@@ -461,7 +494,7 @@ public class MvFileIO {
 								 ((buf[0] & 0xFE) == 0xFE) && ((buf[1] & 0xFF) == 0xFF)) {
 				sRet = EncodingUtils.getString(buf, "UTF-32BE");
 			} else {
-				sRet = EncodingUtils.getAsciiString(buf);
+				sRet = EncodingUtils.getString(buf, "utf-8");
 			}
 			
 			sRet = sRet.trim();
@@ -542,6 +575,28 @@ public class MvFileIO {
 		}
 		return false;
 	}
+	
+	public static boolean isDirectory(String asPathname) {
+		if (asPathname != null) {
+		  File oFile = new File(asPathname);
+		  return(oFile.isDirectory());
+		}
+		return false;
+	}
+	
+	public static boolean isFile(String asPathname) {
+		String sFile;
+		if (asPathname != null) {
+			if (asPathname.indexOf("file://") == 0) {
+				sFile = asPathname.substring("file://".length());
+			} else {
+				sFile = asPathname;
+			}
+		  File oFile = new File(sFile);
+		  return(oFile.isFile());
+		}
+		return false;
+	}	
   
   
   /**

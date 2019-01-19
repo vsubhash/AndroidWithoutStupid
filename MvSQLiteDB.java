@@ -98,7 +98,7 @@ public class MvSQLiteDB {
 				}
 				oCreateTables = executeSQL(sSQL);
 				if (!oCreateTables.mbSuccess) {
-				  MvMessages.logMessage("Unable to create table with SQL [" + sSQL + "]");
+				  MvMessages.logMessage("Unable to create table with SQL");
 				}									
 			}
 			this.closeDB();
@@ -109,7 +109,7 @@ public class MvSQLiteDB {
 				for (String sSQL : aoTableCreationSqlList) {
 					oCreateTables = executeSQL(sSQL);
 					if (!oCreateTables.mbSuccess) {
-						MvMessages.logMessage("Unable to create table with SQL [" + sSQL + "]");
+						MvMessages.logMessage("Unable to create table with SQL");
 					}
 				}
 				closeDB();
@@ -198,9 +198,10 @@ public class MvSQLiteDB {
 	 * 
 	 * @param asSelectSQL
 	 *          SQL query that returns a single row with a single column.
+	 * @param abIsNumberResult whether the result of the query is a number          
 	 * @return text or number result of the query in this.moResult
-	 * @see android.database.sqlite.SQLiteStatement#simpleQueryForString()
-	 * @see android.database.sqlite.SQLiteStatement#simpleQueryForLong()
+	 * @see android.database.sqlite.SQLiteStatement#simpleQueryForString() SQLiteStatement.simpleQueryForString()
+	 * @see android.database.sqlite.SQLiteStatement#simpleQueryForLong() SQLiteStatement.simpleQueryForLong()
 	 */
 	public MvException getSingleResultForSelectSQL(String asSelectSQL, boolean abIsNumberResult) {
 		SQLiteStatement oSQL;
@@ -216,10 +217,10 @@ public class MvSQLiteDB {
 			  }
 			  oResult.mbSuccess = true;
 			} catch (SQLiteDoneException sde) {
-				MvMessages.logMessage("SQL did not return rows with : " + asSelectSQL);
+				MvMessages.logMessage("SQL did not return rows");
 				oResult.mException = sde;
 			} catch (SQLException se) {
-				MvMessages.logMessage("SQL error with : " + asSelectSQL);
+				MvMessages.logMessage("SQL error");
 				oResult.mException = se;
 			}
 			closeDB();
@@ -264,7 +265,7 @@ public class MvSQLiteDB {
 				oResult.mbSuccess = true;
 			} catch (SQLException se) {
 				oResult.mException = se;
-				MvMessages.logMessage("SQL error with " + asSQL);
+				MvMessages.logMessage("SQL error");
 			}
 			if (abAutoClose) {
 				closeDB();

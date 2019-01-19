@@ -14,8 +14,9 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -36,7 +37,6 @@ import android.media.MediaPlayer;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
-import android.os.Build;
 import android.preference.PreferenceManager;
 import android.text.ClipboardManager;
 import android.view.View;
@@ -46,14 +46,14 @@ import android.webkit.URLUtil;
  * This class provides general-purpose routines. Most methods can be called
  * statically while a few require an instance.
  * 
- * <blockquote><code><pre>
+ * <pre class="mv">
  MvGeneral.setClipBoardText("Hello, world!");
  
  ...
  
  MvGeneral mvg = new MvGeneral(MyActivity.this);
  mvg.playSound(R.raw.my_audio_file);
- * </pre></code></blockquote>
+ * </pre>
  * 
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
  * @version 2017.09.01
@@ -120,7 +120,7 @@ public class MvGeneral {
 	/**
 	 * Play the the {@link #moRingTone current ring tone}.
 	 * 
-	 * @return
+	 * @return whether it was successful
 	 */
 	public boolean playRingTone() {
 		if (moRingTone == null) {
@@ -662,11 +662,16 @@ public class MvGeneral {
 				  	try {
 				  		dtReturn = formatter.parse(asDate);
 				  	} catch (ParseException e5) {
+				  		formatter = new SimpleDateFormat("MMM dd, yyyy HHmm");
 				  		try {
-					  		dtReturn = new Date(asDate); // leaving it to JRE's best guess
-					  	} catch (IllegalArgumentException e6) {
-					  		dtReturn = new Date();  // defaults to current date
-					  	}	
+				  			dtReturn = formatter.parse(asDate);
+				  		} catch (ParseException e6) {
+					  		try {
+						  		dtReturn = new Date(asDate); // leaving it to JRE's best guess
+						  	} catch (IllegalArgumentException e7) {
+						  		dtReturn = new Date();  // defaults to current date
+						  	}
+					  	}
 				  	}				  					  	
 				  }
 			  }
@@ -727,8 +732,8 @@ public class MvGeneral {
 	}
 	
 	/**
-	 * Returns a random nummber;
-	 * @return a random number (below Integer.MAX_VALUE)
+	 * Returns a random nummber (below {@link Integer#MAX_VALUE});
+	 * @return a random number 
 	 */
 	public static int getRandomNumber() {
 		return(getRandomNumber(Integer.MAX_VALUE));
@@ -736,8 +741,8 @@ public class MvGeneral {
 	
 	/**
 	 * Returns a random number below specified number.
-	 * @param iLimit
-	 * @return
+	 * @param iLimit number below which the random number needs to be found
+	 * @return the random number
 	 */
 	public static int getRandomNumber(int iLimit) {
 		int iRet;
@@ -749,6 +754,26 @@ public class MvGeneral {
 		}
 		return(iRet);
 	}
+	
+	
+	public static boolean isHttpUrl(String asUrl) {
+		boolean bRet = false;
+		
+		try {
+			URL oURL = new URL(asUrl);
+			URI oURI = oURL.toURI();
+			if (oURI.getScheme().contentEquals("http") || oURI.getScheme().contentEquals("https")) {
+				bRet = true;
+			}
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
+		
+		return(bRet);
+	}
+	
 		
 	/**
 	 * Starts a synchronous download from specified URL and save it
@@ -788,7 +813,7 @@ public class MvGeneral {
 	 * the download needs to happen sequentially. if abGuessFileName is true,
 	 * then the method tries to guess the download file name from the URL or from the 
 	 * specfied mime type. If abGuessFileName is false, then the method is same as
-	 * calling {@link #startSyncDownload(String, String) and other parameters will
+	 * calling {@link #startSyncDownload(String, String)} and other parameters will
 	 * be ignored.
 	 * 
 	 * @param asURL address from which the file needs to be download
@@ -808,7 +833,7 @@ public class MvGeneral {
 	 * the download needs to happen sequentially. if abGuessFileName is true,
 	 * then the method tries to guess the download file name from the URL or from the 
 	 * specfied mime type. If abGuessFileName is false, then the method is same as
-	 * calling {@link #startSyncDownload(String, String) and other parameters will
+	 * calling {@link #startSyncDownload(String, String)} and other parameters will
 	 * be ignored. The specified user agent (browser or http client program) will be 
 	 * mimicked to download the file.
 	 * 
@@ -916,6 +941,44 @@ public class MvGeneral {
 		}
 		return oRet;
   }
+	
+	public static boolean[] convertToArray(ArrayList<Boolean> aoList) {
+		boolean[] arrbReturn = null;
+		if (aoList != null && aoList.size() > 0) {
+			arrbReturn = new boolean[aoList.size()];
+			int i = 0;
+			for (Boolean oListItem : aoList) {
+				arrbReturn[i++] = oListItem.booleanValue();
+			}
+		}
+		return(arrbReturn);
+	}
+	
+	public static ArrayList<Boolean> convertToList(boolean[] aarrbList) {
+		ArrayList<Boolean> oReturnList = new ArrayList<Boolean>();
+		if (aarrbList != null && aarrbList.length > 0) {
+			for (boolean bArrayValue: aarrbList) {
+				oReturnList.add(bArrayValue);
+			}
+		}
+		return(oReturnList);
+	}
+	
+	public static String convertByteArrayToHexString(byte[] arrBytes) {
+		
+		final char[] hexArray = "0123456789ABCDEF".toCharArray();
+		
+		char[] hexChars = new char[arrBytes.length * 2];
+		
+		for (int i = 0; i < arrBytes.length; i++ ) {
+		  int j = arrBytes[i] & 0xFF;
+		  hexChars[i * 2] = hexArray[j >>> 4];
+		  hexChars[i * 2 + 1] = hexArray[j & 0x0F];
+	  }
+		
+		return(new String(hexChars));	
+	}
+	
 
   private class MvMediaPlayer implements MediaPlayer.OnCompletionListener {
   	MediaPlayer mPlayer;
@@ -950,6 +1013,8 @@ public class MvGeneral {
   	
  }
 
+  
+  
   
 	private static final AtomicInteger iAtomicInteger = new AtomicInteger(1);
 

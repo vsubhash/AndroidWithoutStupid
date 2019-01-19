@@ -8,10 +8,9 @@
 package com.vsubhash.droid.androidwithoutstupid;
 
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
-
-
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -21,16 +20,19 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
-import android.text.Layout;
+import android.os.Build;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.Spinner;
@@ -43,13 +45,15 @@ import android.widget.Toast;
  * messages. To use the methods, create an instance of this class in your
  * activity and call the methods of the instance.
  * 
- * <blockquote><code><pre>
-MvMessages oMessages = new MvMessages(this);
+ * 
+<pre>MvMessages oMessages = new MvMessages(this);
 oMessages.showMessage("Hello, world!");
 oMessages.showNotification("New Message",
                            "5 unread e-mail messages ",
                            "Check mail");
- </pre></code></blockquote>
+ </pre>
+ * 
+ * 
  * 
  * 
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
@@ -83,7 +87,7 @@ public class MvMessages {
 	/**
 	 * Constructs an instance of this class for use with specified activity.
 	 * 
-	 * @param activity
+	 * @param aActivity
 	 *          with which this instance needs to work with
 	 */
 	public MvMessages(Activity aActivity) {
@@ -207,6 +211,22 @@ public class MvMessages {
 		 return(this.showNotification(asTicker, asTitle, asMessage, aiIconID, iMVM_NOTIFICATION_ID, aoIntentToLaunch));
 	}
 	
+/*	public void setLargeIcon(Notification aoNotification, int aiDrawable) {
+		if (Build.VERSION.SDK_INT < 11) { return; }
+		Bitmap oBmp = BitmapFactory.decodeResource(mCallingContext.getResources(), aiDrawable);
+		if (oBmp != null) {
+			Field oField = MvReflection.getField("largeIcon", aoNotification);
+			try {
+				oField.set(aoNotification, oBmp);
+			} catch (IllegalArgumentException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}*/
 	
 	/**
 	 * Display a notification and sets the activity that needs to be launched when
@@ -380,6 +400,10 @@ public class MvMessages {
 	  mNotificationManager.notify(mNotificationID, aoNotification);		
 	}
 	
+	public void clearNotification(int aiNotificationID) {
+		mNotificationManager.cancel(aiNotificationID);
+	}
+	
 	
 	
 	/**
@@ -519,15 +543,18 @@ public class MvMessages {
 	 * autocomplete text box and a clear button. This method requires a layout for
 	 * the dialog and an image (drawable) for the erase button. The dialog layout
 	 * should contain an autocomplete text box and an image view. The text entered
-	 * by the end-user will be in the {@link MvPromptResult#moAnswer returned value}.
+	 * by the end-user will be in {@link MvPromptResult#moAnswer moAnswer} 
+	 * (after using {@link EditText#getText()}.toString() on the returned value).
 	 * 
-	 * <pre>
-	 * &lt;?xml version="1.0" encoding="utf-8"?>
-&lt;LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:background="#AA050505"
-    android:orientation="vertical" >
+	 * <img src="{@docRoot}/doc-images/SCREENSHOT-AnswerPrompt.png" 
+	 *      class="aws-img-right"
+	 *      alt="Dialog displayed by showAnswerPrompt()">
+	 * This method requires a dialog layout with a text box and an image button.
+	 * 
+	 *<pre>&lt;ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+            android:background="#AA050505"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content" &gt;
 
     &lt;LinearLayout
         android:id="@+id/llAnswer"
@@ -535,7 +562,7 @@ public class MvMessages {
         android:layout_height="wrap_content"
         android:layout_marginLeft="5dp"
         android:background="@android:color/white"
-        android:orientation="horizontal" >
+        android:orientation="horizontal" &gt;
 
         &lt;AutoCompleteTextView
             android:id="@+id/actvAnswer"
@@ -544,14 +571,14 @@ public class MvMessages {
             android:layout_weight="6"
             android:background="@android:color/white"
             android:ems="8"
-            android:hint="global cooling?"
+            android:hint="le name of the fruit"
             android:paddingLeft="3dp"
             android:text=""
             android:textColor="@android:color/black"
-            android:textColorHint="@android:color/darker_gray" >
+            android:textColorHint="@android:color/darker_gray" &gt;
 
-            &lt;requestFocus />
-        &lt;/AutoCompleteTextView>
+            &lt;requestFocus /&gt;
+        &lt;/AutoCompleteTextView&gt;
 
         &lt;ImageView
             android:id="@+id/ivAnswerErase"
@@ -560,11 +587,70 @@ public class MvMessages {
             android:layout_marginLeft="5dp"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:src="@drawable/broom" />
-    &lt;/LinearLayout>
+            android:src="@drawable/broom" /&gt;
+    &lt;/LinearLayout&gt;
 
-&lt;/LinearLayout>
+&lt;/ScrollView&gt;
 	 * </pre>
+	 * 
+	 * 
+	 * The following code snippet uses the ID of the above layout and the IDs of
+	 * text box and erase button specified in the layout to display an answer 
+	 * prompt.
+	 * 
+	 *    
+<pre>MvPromptResult oPrompt; // class-level declaration
+...
+oPrompt 
+  = oink.showAnswerPrompt(
+      // asTitle
+      "Un Fruit", 
+      // asQuestion
+      "Name your favorite fruit",  
+      // asAnswer (default answer)
+      "apple", 
+      //aiDialogLayoutID
+      R.layout.answer_prompt_layout,  
+      // aiEraseButtonID
+      R.id.ivAnswerErase,
+      // aiAnswerID
+      R.id.actvAnswer,
+      // Button captions
+      "OK", "Cancel", 
+      // Button click handlers
+      new DialogInterface.OnClickListener() {							
+	      {@literal @}Override
+	      public void onClick(DialogInterface aoDialog, int aiWhich) {
+		      oink.showMessage(
+				      "You specified le " + 
+				      oPrompt.moAnswer.getText().toString());
+	      }
+      }, 
+      new DialogInterface.OnClickListener() {							
+	      {@literal @}Override
+	      public void onClick(DialogInterface aoDialog, int aiWhich) {
+		      oink.showMessage("You did not specify un fruit");								
+	      }
+      });
+	oPrompt.show();
+</pre>
+	 * 
+	 * <img src="{@docRoot}/doc-images/SCREENSHOT-AnswerPrompt-with-autosuggestions.png" 
+	 *      class="aws-img-center"
+	 *      alt="Dialog displayed by showAnswerPrompt() with autosuggestions">
+	 * To provide auto-suggestions, an array adapter needs to be set for the text 
+	 * box.
+	 * 
+<pre>String[] arSuggestedFruits 
+  		= { "apple", "banana", "orange", "pineapple", "strawberry" };
+		ArrayAdapter&lt;String&gt; oUrlOptionsAdapter = 
+				new ArrayAdapter&lt;String&gt;(
+						getApplicationContext(), 
+						android.R.layout.simple_dropdown_item_1line, 
+						arSuggestedFruits);
+		oPrompt.moAnswer.setAdapter(oUrlOptionsAdapter);
+</pre>		
+	 *  
 	 * 
 	 * @param asTitle
 	 *          title of the dialog

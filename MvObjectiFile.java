@@ -19,12 +19,12 @@ import java.io.StreamCorruptedException;
  * This class makes it easy serialize and deserialize class instances
  * using a file store.
  *
-<blockquote><code><pre>
+ * <pre>
 String sStoreFile =  // File store 
 MvFileIO.getExternalStoragePath().moResult.toString() + "/namelist.ser";
 
 // Object to be saved in file store
-ArrayList<String> alNames1 = new ArrayList<String>(), alNames2;
+ArrayList&lt;String&gt; alNames1 = new ArrayList&lt;String&gt;(), alNames2;
 alNames1.add("hello");
 alNames1.add("world");
 alNames1.add("stupid");
@@ -34,13 +34,12 @@ MvObjectiFile mof = new MvObjectiFile(sStoreFile);
 mof.save(alNames1);
 
 // Load object from file store
-alNames2 = (ArrayList<String>) mof.load();
+alNames2 = (ArrayList&lt;String&gt;) mof.load();
 
 // Access the read object
 oink.showMessage(alNames2.get(0));
-</pre></code></blockquote>
-
- * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
+</pre>
+ * @author V. Subhash (&lt;a href="http://www.VSubhash.com/"&gt;www.VSubhash.com&gt;/a&gt;)
  */
 public class MvObjectiFile implements Serializable {
   /**

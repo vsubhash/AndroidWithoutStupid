@@ -15,8 +15,9 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import android.os.AsyncTask;
 import android.webkit.URLUtil;
@@ -27,22 +28,23 @@ import android.webkit.URLUtil;
  * pathname to which the file needs to be saved to. The constructor automatically 
  * starts the download. As this class extends {@link android.os.AsyncTask}, 
  * override its methods to handle download events.
-<blockquote><code><pre>
+ * <pre>
 MvAsyncDownload dl = 
-   new MvAsyncDownload(
-      "http://www.example.com/rss.xml", 
-      "/mnt/sdcard/rss.xml") { 
-  {@Override}Override 
-  protected void onPostExecute(MvException result) { 
-    if (result.mbSuccess) { 
-      MvMessages.showMessage(this, "Downloaded to " + result.moResult.toString()); 
-    } else { 
-      MvMessages.showMessage(this, "Failed " + result.msProblem );
-    } 
-    super.onPostExecute(result); 
-  } 
-}; 
-</pre></code></blockquote>
+  new MvAsyncDownload(
+    "http://www.example.com/rss.xml", 
+    "/mnt/sdcard/rss.xml") { 
+      
+	  {{@literal @}Override} 
+	  protected void onPostExecute(MvException result) { 
+	    if (result.mbSuccess) { 
+	      MvMessages.showMessage(this, "Downloaded to " + result.moResult.toString()); 
+	    } else { 
+	      MvMessages.showMessage(this, "Failed " + result.msProblem );
+	    } 
+	    super.onPostExecute(result); 
+	  } 
+	}; 
+ * </pre>
  * @see android.os.AsyncTask
  * @author V. Subhash (<a href="http://www.VSubhash.com/">www.VSubhash.com</a>)
  * @version 2017.09.01
@@ -50,11 +52,11 @@ MvAsyncDownload dl =
  */
 public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 	String msFilename, msFilePathname, msFileDirectory, msMimeType;
-	String msRemoteUrl, msHeaderFileName, msUserAgent;
+	String msRemoteUrl, msHeaderFileName, msUserAgent, msHashMd5 = "", msHashSha1 = "";	
 	HttpURLConnection moURLConnection;
 	long mlDownloadSize;
 	long mlBytesDownloaded = 0;
-	boolean mbGuessFileName = false;
+	boolean mbGuessFileName = false, mbContinue = true;
 	
 	BufferedInputStream in = null;
 	FileOutputStream of = null;
@@ -87,6 +89,20 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 	 * @return mimetype of the download
 	 */
 	public String getMimeType() { return(msMimeType); }
+	
+	/**
+	 * Returns MD5 hash of the file.
+	 * 
+	 * @return MD5 hash of the file
+	 */
+	public String getHashMd5() { return("MD5: " + msHashMd5); }
+	
+	/**
+	 * Returns SHA1 hash of the file.
+	 * 
+	 * @return SHA1 hash of the file
+	 */
+	public String getHashSha1() { return("SHA1: " + msHashSha1); }
 	
 	private MvAsyncDownload() {
 		super();
@@ -182,13 +198,17 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 		MvMessages.logMessage("Set to download " + msRemoteUrl + "\n\tto " + msFilePathname);
 		this.execute(msRemoteUrl, msFilePathname);	  
 	}	
+	
+	
 	  
 	@Override
 	protected void onCancelled() {
 		try {
+			
 			in.close();
 			of.flush();
 			of.close();
+			moURLConnection.disconnect();
 		} catch (IOException ioe) {
 			MvMessages.logMessage("IO Exception closing streams.");
 		} catch (Exception e) {
@@ -200,6 +220,14 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 	
 	@Override
 	protected MvException doInBackground(String... asLinks) {
+		MessageDigest oHashMd5 = null, oHashSha1 = null;
+		try {
+			oHashMd5 = MessageDigest.getInstance("MD5");
+			oHashSha1 = MessageDigest.getInstance("SHA1");
+		} catch (NoSuchAlgorithmException nsae) {	
+			MvMessages.logMessage("Hash not available");
+			nsae.printStackTrace();
+		}
 		URL oURL;
 		MvException oRet = new MvException();
 		byte[] buf = new byte[1024];
@@ -280,6 +308,16 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 					MvMessages.logMessage("Connection response is " + moURLConnection.getResponseCode());
 					
 					for (iTries = 1; iTries < 6; iTries++) {
+						if (!mbContinue) {
+							oRet.mbSuccess = false;
+							oRet.msProblem = "Download cancelled.";
+							oRet.msPossibleSolution = "None required";
+							iTries =6;
+							moURLConnection.disconnect();
+							MvMessages.logMessage("Download cancelled");
+							return(oRet);
+						}						
+						
 						if (iTries > 1) {						
 							moURLConnection.disconnect();
 							moURLConnection = (HttpURLConnection) oURL.openConnection();
@@ -300,7 +338,7 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 						}
 						
 						try {						
-							in = new BufferedInputStream(moURLConnection.getInputStream());			
+							in = new BufferedInputStream(moURLConnection.getInputStream());
 							do {
 								if (isCancelled()) {
 									oRet.mbSuccess = false;
@@ -311,18 +349,35 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 									in.close();
 									of.close();			
 									MvMessages.logMessage("Download cancelled");
-									break;
+									return(oRet);
 								}
 								
 								n = in.read(buf, 0, 1024);
+								
 								mlBytesDownloaded = mlBytesDownloaded + n;
 								if (n > 0) {
 									of.write(buf, 0, n);
+									if (oHashMd5 != null) { oHashMd5.update(buf, 0, n); }
+									if (oHashSha1 != null) { oHashSha1.update(buf, 0, n); }
 									if (msFilename == null) {
 										msFilename = MvFileIO.getFileNameFromPath(msFilePathname);
 									}
-									 publishProgress(mlBytesDownloaded);
+									publishProgress(mlBytesDownloaded);
+									
 								} else {
+									if (oHashMd5 != null) { 
+										byte[] arDigest = oHashMd5.digest();
+										String sDigest = MvGeneral.convertByteArrayToHexString(arDigest);
+										MvMessages.logMessage("The MD5 hash is " + sDigest);
+										msHashMd5 = sDigest;
+									}
+									if (oHashSha1 != null) { 
+										byte[] arDigest = oHashSha1.digest();
+										String sDigest = MvGeneral.convertByteArrayToHexString(arDigest);
+										MvMessages.logMessage("The SHA1 hash is " + sDigest);
+										msHashSha1 = sDigest;
+									}
+									
 									of.flush();
 									in.close();
 									of.close();
@@ -420,6 +475,9 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 		return oRet;
   }
 	
+	public void stopDownload() {
+		mbContinue = false;
+	}
 	
 	String getFileNameFromHeader(String asHeader) {
 		String sFileName, sReturn = "";
@@ -435,6 +493,9 @@ public class MvAsyncDownload extends AsyncTask<String, Long, MvException> {
 		}
 		return(sReturn);
 	}
+	
+
+    
 	
 	
 }

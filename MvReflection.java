@@ -215,9 +215,9 @@ public class MvReflection {
 			MvMessages.logMessage(e.getClass().getCanonicalName());
 			// e.printStackTrace();
 		} catch (NoSuchMethodException e) {
-			// Brute force tactic - find the first method overload that suceeds
+			// Brute force tactic - find the first method overload that succeeds
 			// with the given arguments. When the base types of the arguments
-			// match those of a method overload, the invokation may succeed.
+			// match those of a method overload, the invocation may succeed.
 			for (Method oCurrentMethod : aoInvokingInstance.getClass().getMethods()) {
 				if (oCurrentMethod.getName().contentEquals(asMethodName)) {
 					if (oCurrentMethod.getParameterTypes().length == aoMethodArguments.length) {

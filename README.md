@@ -27,3 +27,10 @@ The JAR file along with Java source, class and doc files are available at
 Here are a few introductory articles on CodeProject:
   * http://www.codeproject.com/Articles/801927/Using-AndroidWithoutStupid-Java-library-to-ease-th
   * http://www.codeproject.com/Tips/1037920/Tip-Accessing-Newer-Android-SDK-Version-APIs-Using
+  
+
+History
+-------
+  * 2019.01.19
+  	* Fixed MvFile.getFileAsText() to return Unicode text instead of ASCII
+
